@@ -1,0 +1,38 @@
+[
+  {
+    "id": "team-1",
+    "name": "Blue Orbit",
+    "members": ["Avery", "Jordan", "Maya"],
+    "topic": "Adaptive Learning Analytics"
+  },
+  {
+    "id": "team-2",
+    "name": "Cedar Stack",
+    "members": ["Priya", "Liam", "Noah"],
+    "topic": "Edge Classroom Devices"
+  },
+  {
+    "id": "team-3",
+    "name": "Nimbus",
+    "members": ["Sofia", "Ethan", "Leo"],
+    "topic": "Hybrid Attendance Automation"
+  },
+  {
+    "id": "team-4",
+    "name": "Signal Spark",
+    "members": ["Olivia", "Kai", "Zoe"],
+    "topic": "Real-Time Feedback Loop"
+  },
+  {
+    "id": "team-5",
+    "name": "Studio North",
+    "members": ["Amir", "Hannah", "Lucas"],
+    "topic": "Presentation Confidence Coach"
+  },
+  {
+    "id": "team-6",
+    "name": "Vector Lab",
+    "members": ["Emma", "Jules", "Ravi"],
+    "topic": "Accessible Slide Design"
+  }
+]
