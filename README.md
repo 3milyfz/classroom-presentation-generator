@@ -10,12 +10,12 @@ Local-only MVP with a decoupled frontend and backend for the A2 rapid sprint.
 ## Local Setup
 
 1. Backend
-   - `cd /Users/emilyzhou/classroom-presentation-generator/backend`
+   - `cd /classroom-presentation-generator/backend`
    - `npm install`
    - `npm start`
    - API runs on `http://localhost:5001`
 2. Frontend (in a new terminal tab)
-   - `cd /Users/emilyzhou/classroom-presentation-generator/frontend`
+   - `cd /classroom-presentation-generator/frontend`
    - `npm install`
    - `npm start`
    - App runs on `http://localhost:3000`
