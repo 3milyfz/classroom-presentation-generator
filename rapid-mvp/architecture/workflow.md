@@ -8,10 +8,7 @@ This document summarizes the automated deployment pipeline and how it achieves *
 
 **Direct link to the workflow in the code repository (main branch):**
 
-[[https://github.com/3milyfz/classroom-presentation-generator/blob/main/.github/workflows/deploy.yml](https://github.com/3milyfz/classroom-presentation-generator/blob/main/.github/workflows/deploy.yml)
-
-If your default branch is `master`, use this permalink instead:  
-[https://github.com/3milyfz/classroom-presentation-generator/blob/master/.github/workflows/deploy.yml](https://github.com/3milyfz/classroom-presentation-generator/blob/master/.github/workflows/deploy.yml)](https://github.com/3milyfz/classroom-presentation-generator/blob/79028c40bcc383d4873052865c6b27e0ff4b3e38/.github/workflows/deploy.yml)
+[https://github.com/3milyfz/classroom-presentation-generator/blob/master/.github/workflows/deploy.yml](https://github.com/3milyfz/classroom-presentation-generator/blob/master/.github/workflows/deploy.yml)]
 
 ---
 
