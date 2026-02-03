@@ -1,0 +1,35 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id           String   @id @default(cuid())
+  email        String   @unique
+  passwordHash String
+  createdAt    DateTime @default(now())
+  teams        Team[]
+  session      SessionState?
+}
+
+model Team {
+  id        String   @id @default(cuid())
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name      String
+  topic     String   @default("TBD")
+  members   String   // JSON array of strings
+  createdAt DateTime @default(now())
+}
+
+model SessionState {
+  userId            String   @id
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lastSelectedTeamId String? // Team id or null
+  remainingTeamIds  String   // JSON array of team ids
+  updatedAt         DateTime @updatedAt
+}
