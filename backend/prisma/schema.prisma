@@ -23,6 +23,7 @@ model Team {
   name          String
   topic         String              @default("TBD")
   members       String              // JSON array of strings
+  notes         String              @default("")  // New field for instructor notes
   createdAt     DateTime            @default(now())
   presentations TeamPresentation[]  // New relation: multiple presentations allowed
 }

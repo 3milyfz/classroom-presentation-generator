@@ -97,6 +97,7 @@ app.get("/api/teams", requireAuth, async (req, res) => {
     name: t.name,
     topic: t.topic,
     members: JSON.parse(t.members || "[]"),
+    notes: t.notes || "",
   }));
   res.json({ teams: normalized });
 });
@@ -115,6 +116,7 @@ app.get("/api/status", requireAuth, async (req, res) => {
         name: team.name,
         topic: team.topic,
         members: JSON.parse(team.members || "[]"),
+        notes: team.notes || "",
       };
     }
   }
@@ -149,8 +151,37 @@ app.post("/api/randomize", requireAuth, async (req, res) => {
     name: team.name,
     topic: team.topic,
     members: JSON.parse(team.members || "[]"),
+    notes: team.notes || "",  
   };
   res.json({ team: selected, remainingCount: remainingIds.length });
+});
+
+app.post("/api/teams/:id/notes", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { notes } = req.body;
+  
+  const team = await prisma.team.findFirst({
+    where: { id, userId: req.userId },
+  });
+  
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  const updatedTeam = await prisma.team.update({
+    where: { id },
+    data: { notes: notes || "" },
+  });
+  
+  res.json({
+    team: {
+      id: updatedTeam.id,
+      name: updatedTeam.name,
+      topic: updatedTeam.topic,
+      members: JSON.parse(updatedTeam.members || "[]"),
+      notes: updatedTeam.notes || "",
+    },
+  });
 });
 
 app.post("/api/reset", requireAuth, async (req, res) => {
@@ -215,7 +246,13 @@ app.delete("/api/teams/:id", requireAuth, async (req, res) => {
     });
   }
   res.json({
-    team: { id: team.id, name: team.name, topic: team.topic, members: JSON.parse(team.members || "[]") },
+    team: { 
+      id: team.id, 
+      name: team.name, 
+      topic: team.topic, 
+      members: JSON.parse(team.members || "[]"),
+      notes: team.notes || "",  
+    },
   });
 });
 
@@ -301,6 +338,7 @@ app.get("/api/export", requireAuth, async (req, res) => {
       'Team Name',
       'Topic',
       'Members',
+      'Notes', 
       'Created At',
       'Presentation Time (min)',
       'Q&A Time (min)',
@@ -310,6 +348,7 @@ app.get("/api/export", requireAuth, async (req, res) => {
     
     teams.forEach(team => {
       const members = JSON.parse(team.members || '[]').join('; ');
+      const notes = team.notes || '';
       
       if (team.presentations.length === 0) {
         // Team hasn't presented yet
@@ -317,6 +356,7 @@ app.get("/api/export", requireAuth, async (req, res) => {
           team.name,
           team.topic,
           members,
+          notes,
           team.createdAt.toISOString(),
           'N/A',
           'N/A',
@@ -334,6 +374,7 @@ app.get("/api/export", requireAuth, async (req, res) => {
             team.name,
             team.topic,
             members,
+            notes,
             team.createdAt.toISOString(),
             presMin,
             qaMin,
@@ -360,6 +401,7 @@ app.get("/api/export", requireAuth, async (req, res) => {
       name: team.name,
       topic: team.topic,
       members: JSON.parse(team.members || '[]'),
+      notes: team.notes || "",  
       createdAt: team.createdAt,
       presentations: team.presentations.map(p => ({
         presentationMinutes: (p.presentationSeconds / 60).toFixed(2),
