@@ -413,9 +413,6 @@ export default function App() {
         <section className="space-y-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-6">
           <div>
             <h2 className="text-lg font-semibold">Control Panel</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Add teams, pick the next presenters, and control the timer.
-            </p>
           </div>
 
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
@@ -432,35 +429,7 @@ export default function App() {
             >
               Select Next Team
             </button>
-            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-4">
-              {selectedTeam ? (
-                <>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    Current Team
-                  </p>
-                  <p className="mt-2 text-lg font-semibold">{selectedTeam.name}</p>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Topic: {selectedTeam.topic}
-                  </p>
-                  <p className="mt-2 text-sm">
-                    Members: {selectedTeam.members.join(", ")}
-                  </p>
-                  {(recordedPresentationSeconds > 0 || recordedQaSeconds > 0) && (
-                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs space-y-1">
-                      <p className="text-slate-500 dark:text-slate-400">Recorded Times:</p>
-                      {recordedPresentationSeconds > 0 && (
-                        <p>Presentation: {formatTime(recordedPresentationSeconds)}</p>
-                      )}
-                      {recordedQaSeconds > 0 && (
-                        <p>Q&A: {formatTime(recordedQaSeconds)}</p>
-                      )}
-                    </div>
-                  )}
-                </>
-              ) : (
-                <p className="text-sm text-slate-600 dark:text-slate-400">No team selected yet.</p>
-              )}
-            </div>
+            
           </div>
 
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
@@ -670,7 +639,7 @@ export default function App() {
                   className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
                 />
                 <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
-                  Notes are automatically saved to the team's record and included in exports.
+                  Notes are saved to the team's record and included in exports.
                 </p>
               </div>
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
