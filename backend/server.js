@@ -225,6 +225,154 @@ app.post("/api/teams/reset", requireAuth, async (req, res) => {
   res.json({ teams: [] });
 });
 
+app.post("/api/teams/:teamId/presentation", requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const { presentationSeconds, qaSeconds } = req.body || {};
+  
+  // Validate ownership
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, userId: req.userId }
+  });
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  // Validate input
+  if (typeof presentationSeconds !== 'number' || typeof qaSeconds !== 'number') {
+    return res.status(400).json({ message: "Invalid timing data." });
+  }
+  
+  // Record presentation
+  const presentation = await prisma.teamPresentation.create({
+    data: {
+      teamId,
+      presentationSeconds,
+      qaSeconds
+    }
+  });
+  
+  res.status(201).json({ 
+    presentation: {
+      id: presentation.id,
+      presentationSeconds: presentation.presentationSeconds,
+      qaSeconds: presentation.qaSeconds,
+      presentedAt: presentation.presentedAt
+    }
+  });
+});
+
+app.get("/api/teams/:teamId/presentations", requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  
+  // Validate ownership
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, userId: req.userId }
+  });
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  const presentations = await prisma.teamPresentation.findMany({
+    where: { teamId },
+    orderBy: { presentedAt: 'desc' }
+  });
+  
+  res.json({ presentations });
+});
+
+app.get("/api/export", requireAuth, async (req, res) => {
+  const format = req.query.format || 'json';
+  
+  // Fetch all teams with presentations
+  const teams = await prisma.team.findMany({
+    where: { userId: req.userId },
+    include: {
+      presentations: {
+        orderBy: { presentedAt: 'desc' }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+  
+  if (format === 'csv') {
+    // Generate CSV
+    const rows = [];
+    rows.push([
+      'Team Name',
+      'Topic',
+      'Members',
+      'Created At',
+      'Presentation Time (min)',
+      'Q&A Time (min)',
+      'Total Time (min)',
+      'Presented At'
+    ]);
+    
+    teams.forEach(team => {
+      const members = JSON.parse(team.members || '[]').join('; ');
+      
+      if (team.presentations.length === 0) {
+        // Team hasn't presented yet
+        rows.push([
+          team.name,
+          team.topic,
+          members,
+          team.createdAt.toISOString(),
+          'N/A',
+          'N/A',
+          'N/A',
+          'N/A'
+        ]);
+      } else {
+        // Include each presentation
+        team.presentations.forEach(p => {
+          const presMin = (p.presentationSeconds / 60).toFixed(2);
+          const qaMin = (p.qaSeconds / 60).toFixed(2);
+          const totalMin = ((p.presentationSeconds + p.qaSeconds) / 60).toFixed(2);
+          
+          rows.push([
+            team.name,
+            team.topic,
+            members,
+            team.createdAt.toISOString(),
+            presMin,
+            qaMin,
+            totalMin,
+            p.presentedAt.toISOString()
+          ]);
+        });
+      }
+    });
+    
+    // Convert to CSV string
+    const csv = rows.map(row => 
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="teams-export-${Date.now()}.csv"`);
+    res.send(csv);
+    
+  } else {
+    // JSON format
+    const data = teams.map(team => ({
+      id: team.id,
+      name: team.name,
+      topic: team.topic,
+      members: JSON.parse(team.members || '[]'),
+      createdAt: team.createdAt,
+      presentations: team.presentations.map(p => ({
+        presentationMinutes: (p.presentationSeconds / 60).toFixed(2),
+        qaMinutes: (p.qaSeconds / 60).toFixed(2),
+        totalMinutes: ((p.presentationSeconds + p.qaSeconds) / 60).toFixed(2),
+        presentedAt: p.presentedAt
+      }))
+    }));
+    
+    res.json({ teams: data });
+  }
+});
+
 app.listen(port, "0.0.0.0", () => {
   console.log(`Backend listening on http://0.0.0.0:${port}`);
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
