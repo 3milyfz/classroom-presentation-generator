@@ -230,3 +230,15 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
   console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
 });
+
+const fs = require("fs");
+
+app.get("/debug/db-file", (req, res) => {
+  const path = "/data/app.db";
+  try {
+    const stat = fs.statSync(path);
+    res.json({ path, exists: true, size: stat.size });
+  } catch {
+    res.json({ path, exists: false });
+  }
+});
