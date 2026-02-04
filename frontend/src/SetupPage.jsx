@@ -80,7 +80,7 @@ export default function SetupPage() {
             />
             <input
               type="text"
-              placeholder="Members (comma-separated, optional)"
+              placeholder="Members (optional)"
               value={form.members}
               onChange={(e) => setForm((prev) => ({ ...prev, members: e.target.value }))}
               className="rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-4 py-3 text-sm text-slate-900 dark:text-slate-100"
