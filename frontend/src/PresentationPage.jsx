@@ -368,36 +368,6 @@ export default function PresentationPage() {
                 )}
               </div>
 
-              {(recordedPresentationSeconds > 0 || recordedQaSeconds > 0) && (
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
-                    Recorded Times
-                  </p>
-                  <div className="grid grid-cols-2 gap-4">
-                    {recordedPresentationSeconds > 0 && (
-                      <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Presentation</p>
-                        <p className="text-2xl font-semibold mt-1">{formatTime(recordedPresentationSeconds)}</p>
-                      </div>
-                    )}
-                    {recordedQaSeconds > 0 && (
-                      <div>
-                        <p className="text-xs text-slate-500 dark:text-slate-400">Q&A</p>
-                        <p className="text-2xl font-semibold mt-1">{formatTime(recordedQaSeconds)}</p>
-                      </div>
-                    )}
-                  </div>
-                  {recordedPresentationSeconds > 0 && recordedQaSeconds > 0 && (
-                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
-                      <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
-                      <p className="text-2xl font-semibold mt-1">
-                        {formatTime(recordedPresentationSeconds + recordedQaSeconds)}
-                      </p>
-                    </div>
-                  )}
-                </div>
-              )}
-
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
                 <div className="flex items-center justify-between mb-3">
                   <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
