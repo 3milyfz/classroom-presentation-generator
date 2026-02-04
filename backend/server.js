@@ -97,6 +97,7 @@ app.get("/api/teams", requireAuth, async (req, res) => {
     name: t.name,
     topic: t.topic,
     members: JSON.parse(t.members || "[]"),
+    notes: t.notes || "",
   }));
   res.json({ teams: normalized });
 });
@@ -115,6 +116,7 @@ app.get("/api/status", requireAuth, async (req, res) => {
         name: team.name,
         topic: team.topic,
         members: JSON.parse(team.members || "[]"),
+        notes: team.notes || "",
       };
     }
   }
@@ -149,8 +151,37 @@ app.post("/api/randomize", requireAuth, async (req, res) => {
     name: team.name,
     topic: team.topic,
     members: JSON.parse(team.members || "[]"),
+    notes: team.notes || "",  
   };
   res.json({ team: selected, remainingCount: remainingIds.length });
+});
+
+app.post("/api/teams/:id/notes", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { notes } = req.body;
+  
+  const team = await prisma.team.findFirst({
+    where: { id, userId: req.userId },
+  });
+  
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  const updatedTeam = await prisma.team.update({
+    where: { id },
+    data: { notes: notes || "" },
+  });
+  
+  res.json({
+    team: {
+      id: updatedTeam.id,
+      name: updatedTeam.name,
+      topic: updatedTeam.topic,
+      members: JSON.parse(updatedTeam.members || "[]"),
+      notes: updatedTeam.notes || "",
+    },
+  });
 });
 
 app.post("/api/reset", requireAuth, async (req, res) => {
@@ -215,7 +246,13 @@ app.delete("/api/teams/:id", requireAuth, async (req, res) => {
     });
   }
   res.json({
-    team: { id: team.id, name: team.name, topic: team.topic, members: JSON.parse(team.members || "[]") },
+    team: { 
+      id: team.id, 
+      name: team.name, 
+      topic: team.topic, 
+      members: JSON.parse(team.members || "[]"),
+      notes: team.notes || "",  
+    },
   });
 });
 
@@ -223,6 +260,159 @@ app.post("/api/teams/reset", requireAuth, async (req, res) => {
   await prisma.team.deleteMany({ where: { userId: req.userId } });
   await prisma.sessionState.deleteMany({ where: { userId: req.userId } });
   res.json({ teams: [] });
+});
+
+app.post("/api/teams/:teamId/presentation", requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  const { presentationSeconds, qaSeconds } = req.body || {};
+  
+  // Validate ownership
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, userId: req.userId }
+  });
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  // Validate input
+  if (typeof presentationSeconds !== 'number' || typeof qaSeconds !== 'number') {
+    return res.status(400).json({ message: "Invalid timing data." });
+  }
+  
+  // Record presentation
+  const presentation = await prisma.teamPresentation.create({
+    data: {
+      teamId,
+      presentationSeconds,
+      qaSeconds
+    }
+  });
+  
+  res.status(201).json({ 
+    presentation: {
+      id: presentation.id,
+      presentationSeconds: presentation.presentationSeconds,
+      qaSeconds: presentation.qaSeconds,
+      presentedAt: presentation.presentedAt
+    }
+  });
+});
+
+app.get("/api/teams/:teamId/presentations", requireAuth, async (req, res) => {
+  const { teamId } = req.params;
+  
+  // Validate ownership
+  const team = await prisma.team.findFirst({
+    where: { id: teamId, userId: req.userId }
+  });
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  const presentations = await prisma.teamPresentation.findMany({
+    where: { teamId },
+    orderBy: { presentedAt: 'desc' }
+  });
+  
+  res.json({ presentations });
+});
+
+app.get("/api/export", requireAuth, async (req, res) => {
+  const format = req.query.format || 'json';
+  
+  // Fetch all teams with presentations
+  const teams = await prisma.team.findMany({
+    where: { userId: req.userId },
+    include: {
+      presentations: {
+        orderBy: { presentedAt: 'desc' }
+      }
+    },
+    orderBy: { createdAt: 'asc' }
+  });
+  
+  if (format === 'csv') {
+    // Generate CSV
+    const rows = [];
+    rows.push([
+      'Team Name',
+      'Topic',
+      'Members',
+      'Notes', 
+      'Created At',
+      'Presentation Time (min)',
+      'Q&A Time (min)',
+      'Total Time (min)',
+      'Presented At'
+    ]);
+    
+    teams.forEach(team => {
+      const members = JSON.parse(team.members || '[]').join('; ');
+      const notes = team.notes || '';
+      
+      if (team.presentations.length === 0) {
+        // Team hasn't presented yet
+        rows.push([
+          team.name,
+          team.topic,
+          members,
+          notes,
+          team.createdAt.toISOString(),
+          'N/A',
+          'N/A',
+          'N/A',
+          'N/A'
+        ]);
+      } else {
+        // Include each presentation
+        team.presentations.forEach(p => {
+          const presMin = (p.presentationSeconds / 60).toFixed(2);
+          const qaMin = (p.qaSeconds / 60).toFixed(2);
+          const totalMin = ((p.presentationSeconds + p.qaSeconds) / 60).toFixed(2);
+          
+          rows.push([
+            team.name,
+            team.topic,
+            members,
+            notes,
+            team.createdAt.toISOString(),
+            presMin,
+            qaMin,
+            totalMin,
+            p.presentedAt.toISOString()
+          ]);
+        });
+      }
+    });
+    
+    // Convert to CSV string
+    const csv = rows.map(row => 
+      row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
+    ).join('\n');
+    
+    res.setHeader('Content-Type', 'text/csv');
+    res.setHeader('Content-Disposition', `attachment; filename="teams-export-${Date.now()}.csv"`);
+    res.send(csv);
+    
+  } else {
+    // JSON format
+    const data = teams.map(team => ({
+      id: team.id,
+      name: team.name,
+      topic: team.topic,
+      members: JSON.parse(team.members || '[]'),
+      notes: team.notes || "",  
+      createdAt: team.createdAt,
+      presentations: team.presentations.map(p => ({
+        presentationMinutes: (p.presentationSeconds / 60).toFixed(2),
+        qaMinutes: (p.qaSeconds / 60).toFixed(2),
+        totalMinutes: ((p.presentationSeconds + p.qaSeconds) / 60).toFixed(2),
+        presentedAt: p.presentedAt
+      }))
+    }));
+    
+    res.json({ teams: data });
+  }
 });
 
 app.listen(port, "0.0.0.0", () => {
