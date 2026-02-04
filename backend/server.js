@@ -243,12 +243,12 @@ app.get("/debug/db-file", (req, res) => {
   }
 });
 
-app.get("/debug/data-dir", (req, res) => {
-  const fs = require("fs");
-  try {
-    const files = fs.readdirSync("/data");
-    res.json({ ok: true, files });
-  } catch (e) {
-    res.json({ ok: false, error: String(e) });
-  }
-});
+// app.get("/debug/data-dir", (req, res) => {
+//   const fs = require("fs");
+//   try {
+//     const files = fs.readdirSync("/data");
+//     res.json({ ok: true, files });
+//   } catch (e) {
+//     res.json({ ok: false, error: String(e) });
+//   }
+// });
