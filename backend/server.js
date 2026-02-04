@@ -231,17 +231,17 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
 });
 
-const fs = require("fs");
+// const fs = require("fs");
 
-app.get("/debug/db-file", (req, res) => {
-  const path = "/data/app.db";
-  try {
-    const stat = fs.statSync(path);
-    res.json({ path, exists: true, size: stat.size });
-  } catch {
-    res.json({ path, exists: false });
-  }
-});
+// app.get("/debug/db-file", (req, res) => {
+//   const path = "/data/app.db";
+//   try {
+//     const stat = fs.statSync(path);
+//     res.json({ path, exists: true, size: stat.size });
+//   } catch {
+//     res.json({ path, exists: false });
+//   }
+// });
 
 // app.get("/debug/data-dir", (req, res) => {
 //   const fs = require("fs");
