@@ -27,6 +27,8 @@ export default function PresentationPage() {
   const [recordedQaSeconds, setRecordedQaSeconds] = useState(0);
   const [notes, setNotes] = useState("");
   const [isSavingNotes, setIsSavingNotes] = useState(false);
+  const [grade, setGrade] = useState("");  // New state
+  const [isSavingGrade, setIsSavingGrade] = useState(false);  // New state
   
   const presentationStartTime = useRef(null);
   const qaStartTime = useRef(null);
@@ -39,8 +41,10 @@ export default function PresentationPage() {
   useEffect(() => {
     if (selectedTeam) {
       setNotes(selectedTeam.notes || "");
+      setGrade(selectedTeam.grade || ""); 
     } else {
       setNotes("");
+      setGrade("");
     }
   }, [selectedTeam?.id]);
 
@@ -116,6 +120,28 @@ export default function PresentationPage() {
       window.alert("Network error while saving notes.");
     } finally {
       setIsSavingNotes(false);
+    }
+  };
+
+  const handleSaveGrade = async () => {
+    if (!selectedTeam) return;
+    setIsSavingGrade(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/teams/${selectedTeam.id}/grade`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ grade }),
+      });
+      if (response.status === 401) return logout();
+      if (response.ok) {
+        await fetchTeams();
+      } else {
+        window.alert("Failed to save grade.");
+      }
+    } catch (error) {
+      window.alert("Network error while saving grade.");
+    } finally {
+      setIsSavingGrade(false);
     }
   };
 
@@ -358,15 +384,63 @@ export default function PresentationPage() {
                     Live
                   </span>
                 </div>
-                {selectedTeam.topic && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400">{selectedTeam.topic}</p>
-                )}
-                {selectedTeam.members && selectedTeam.members.length > 0 && (
-                  <p className="text-sm text-slate-600 dark:text-slate-400 mt-1">
-                    {selectedTeam.members.join(", ")}
-                  </p>
-                )}
+                
+                <div className="flex items-center gap-2 mt-3">
+                  <label className="text-xs font-semibold text-slate-600 dark:text-slate-400 whitespace-nowrap">
+                    Grade:
+                  </label>
+                  <input
+                    type="text"
+                    value={grade}
+                    onChange={(e) => setGrade(e.target.value)}
+                    placeholder="A, 95, etc."
+                    className="w-28 rounded-md border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-2 py-1 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-green-500 focus:border-transparent"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleSaveGrade}
+                    disabled={isSavingGrade}
+                    className="rounded-md bg-green-600 px-3 py-1 text-xs font-semibold text-white hover:bg-green-700 disabled:opacity-50 transition-colors"
+                  >
+                    {isSavingGrade ? "..." : "Save"}
+                  </button>
+                  {selectedTeam.grade && (
+                    <span className="text-xs text-green-600 dark:text-green-400">
+                      ✓ Saved
+                    </span>
+                  )}
+                </div>
               </div>
+
+              {(recordedPresentationSeconds > 0 || recordedQaSeconds > 0) && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
+                    Recorded Times
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {recordedPresentationSeconds > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Presentation</p>
+                        <p className="text-2xl font-semibold mt-1">{formatTime(recordedPresentationSeconds)}</p>
+                      </div>
+                    )}
+                    {recordedQaSeconds > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Q&A</p>
+                        <p className="text-2xl font-semibold mt-1">{formatTime(recordedQaSeconds)}</p>
+                      </div>
+                    )}
+                  </div>
+                  {recordedPresentationSeconds > 0 && recordedQaSeconds > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Total</p>
+                      <p className="text-2xl font-semibold mt-1">
+                        {formatTime(recordedPresentationSeconds + recordedQaSeconds)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
                 <div className="flex items-center justify-between mb-3">
