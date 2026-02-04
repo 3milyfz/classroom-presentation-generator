@@ -188,219 +188,129 @@ export default function App() {
   }
 
   return (
-    <div className="min-h-screen bg-midnight-light dark:bg-midnight px-8 py-10 text-slate-900 dark:text-slate-100">
-      <header className="mb-10 flex flex-wrap items-start justify-between gap-6">
-        <div>
-          <p className="text-xs uppercase tracking-[0.3em] text-slate-500 dark:text-slate-400">
-            Instructor Command Center
-          </p>
-          <h1 className="mt-2 text-3xl font-semibold">Presentation Randomizer</h1>
-          <p className="mt-2 max-w-xl text-slate-600 dark:text-slate-300">
-            Manage team order, highlight the current presenters, and keep the timing
-            under control.
-          </p>
-          <p className="mt-2 text-sm text-slate-500 dark:text-slate-500">
-            Logged in as {user?.email}{" "}
-            <button
-              type="button"
-              onClick={logout}
-              className="text-accent hover:underline"
-            >
-              Log out
-            </button>
-          </p>
-        </div>
+    <div className="min-h-screen bg-midnight-light dark:bg-midnight px-6 py-8 text-slate-900 dark:text-slate-100">
+      <header className="mb-8 flex flex-wrap items-center justify-between gap-4">
         <div className="flex items-center gap-4">
-          <button
-            type="button"
-            onClick={toggleTheme}
-            className="rounded-full border border-slate-300 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:bg-slate-50 dark:hover:bg-slate-700"
-            title={theme === "dark" ? "Switch to light mode" : "Switch to dark mode"}
-          >
-            {theme === "dark" ? "☀️" : "🌙"}
-          </button>
-          <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-6 py-4 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-            Teams Remaining
-          </p>
-          <p className="mt-2 text-3xl font-semibold">{remainingCount}</p>
+          <h1 className="text-2xl font-semibold tracking-tight">NextUp</h1>
+          <p className="text-sm text-slate-500 dark:text-slate-400">Presentation day, simplified.</p>
+        </div>
+        <div className="flex items-center gap-3">
+          <span className="text-sm text-slate-500 dark:text-slate-400">{remainingCount} left</span>
           <button
             type="button"
             onClick={handleResetRandomizer}
-            className="mt-3 w-full rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
+            className="rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-600 dark:text-slate-300 hover:bg-slate-100 dark:hover:bg-slate-800"
           >
-            Reset Round
+            Reset round
           </button>
-        </div>
+          <button
+            type="button"
+            onClick={toggleTheme}
+            className="rounded-full border border-slate-300 dark:border-slate-700 p-1.5 text-slate-600 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
+            title={theme === "dark" ? "Light mode" : "Dark mode"}
+          >
+            {theme === "dark" ? "☀️" : "🌙"}
+          </button>
+          <button type="button" onClick={logout} className="text-sm text-slate-500 dark:text-slate-400 hover:underline">
+            Log out
+          </button>
         </div>
       </header>
 
-      <div className="grid gap-6 lg:grid-cols-[360px_1fr]">
-        <section className="space-y-6 rounded-2xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-6">
+      <div className="grid gap-6 lg:grid-cols-[320px_1fr]">
+        <section className="space-y-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-4">
           <div>
-            <h2 className="text-lg font-semibold">Control Panel</h2>
-            <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-              Add teams, pick the next presenters, and control the timer.
-            </p>
-          </div>
-
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-            <div className="flex items-center justify-between">
-              <p className="text-sm font-semibold">Randomizer</p>
-              <span className="text-xs text-slate-500">
-                {loading ? "Selecting..." : "Ready"}
-              </span>
-            </div>
             <button
               type="button"
               onClick={handleRandomize}
-              className="mt-4 w-full rounded-full bg-accent px-4 py-2 text-sm font-semibold text-slate-900 hover:brightness-110"
+              disabled={loading}
+              className="w-full rounded-full bg-accent px-4 py-2.5 text-sm font-semibold text-slate-900 hover:brightness-110 disabled:opacity-50"
             >
-              Select Next Team
+              {loading ? "Picking…" : "Pick next"}
             </button>
-            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-4">
+            <div className="mt-3 rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-3">
               {selectedTeam ? (
                 <>
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                    Current Team
-                  </p>
-                  <p className="mt-2 text-lg font-semibold">{selectedTeam.name}</p>
-                  <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                    Topic: {selectedTeam.topic}
-                  </p>
-                  <p className="mt-2 text-sm">
-                    Members: {selectedTeam.members.join(", ")}
-                  </p>
+                  <p className="font-medium">{selectedTeam.name}</p>
+                  <p className="mt-0.5 text-sm text-slate-500 dark:text-slate-400">{selectedTeam.topic}</p>
+                  <p className="text-xs text-slate-600 dark:text-slate-300">{selectedTeam.members.join(", ")}</p>
                 </>
               ) : (
-                <p className="text-sm text-slate-600 dark:text-slate-400">No team selected yet.</p>
+                <p className="text-sm text-slate-500 dark:text-slate-400">No team picked yet.</p>
               )}
             </div>
           </div>
 
-          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-            <p className="text-sm font-semibold">Dual-Phase Timer</p>
-            <div className="mt-3 grid grid-cols-2 gap-3 text-xs text-slate-600 dark:text-slate-400">
-              <label className="flex flex-col gap-2">
-                Presentation (min)
+          <div className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-3">
+            <div className="grid grid-cols-2 gap-2 text-sm">
+              <label className="flex flex-col gap-1">
+                <span className="text-slate-500 dark:text-slate-400">Present (min)</span>
                 <input
                   type="number"
                   min="1"
                   value={presentationMinutes}
-                  onChange={(event) => setPresentationMinutes(Number(event.target.value))}
-                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                  onChange={(e) => setPresentationMinutes(Number(e.target.value))}
+                  className="rounded border border-slate-200 dark:border-slate-700 bg-panel-light dark:bg-panel px-2 py-1.5 text-slate-900 dark:text-slate-100"
                 />
               </label>
-              <label className="flex flex-col gap-2">
-                Q&A (min)
+              <label className="flex flex-col gap-1">
+                <span className="text-slate-500 dark:text-slate-400">Q&A (min)</span>
                 <input
                   type="number"
                   min="1"
                   value={qaMinutes}
-                  onChange={(event) => setQaMinutes(Number(event.target.value))}
-                  className="rounded-lg border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
+                  onChange={(e) => setQaMinutes(Number(e.target.value))}
+                  className="rounded border border-slate-200 dark:border-slate-700 bg-panel-light dark:bg-panel px-2 py-1.5 text-slate-900 dark:text-slate-100"
                 />
               </label>
             </div>
-            <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-4 text-center">
-              <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                {phase === "presentation" ? "Presentation" : phase === "qa" ? "Q&A" : "Ready"}
-              </p>
-              <p
-                className={`mt-2 text-3xl font-semibold ${
-                  warningActive ? "text-danger font-bold" : "text-slate-900 dark:text-slate-100"
-                }`}
-              >
-                {formatTime(Math.max(remainingSeconds, 0))}
-              </p>
-              {warningActive && (
-                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-danger">
-                  2-minute warning
-                </p>
-              )}
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="button"
-                onClick={handleStartTimer}
-                className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-slate-900 hover:brightness-110"
-              >
-                Start
-              </button>
-              <button
-                type="button"
-                onClick={handlePauseTimer}
-                className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
-              >
-                Pause
-              </button>
-              <button
-                type="button"
-                onClick={handleResetTimer}
-                className="flex-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
-              >
-                Reset
-              </button>
+            <p className={`mt-2 text-center text-xl font-medium ${warningActive ? "text-red-500 dark:text-red-400 font-semibold" : "text-slate-900 dark:text-slate-100"}`}>
+              {formatTime(Math.max(remainingSeconds, 0))}
+            </p>
+            <p className="text-center text-xs text-slate-500 dark:text-slate-400">
+              {phase === "presentation" ? "Presentation" : phase === "qa" ? "Q&A" : "Ready"}
+            </p>
+            {warningActive && <p className="text-center text-xs text-red-500">2 min left</p>}
+            <div className="mt-2 flex gap-1">
+              <button type="button" onClick={handleStartTimer} className="flex-1 rounded bg-accent py-1.5 text-sm font-medium text-slate-900">Start</button>
+              <button type="button" onClick={handlePauseTimer} className="flex-1 rounded border border-slate-300 dark:border-slate-700 py-1.5 text-sm text-slate-600 dark:text-slate-300">Pause</button>
+              <button type="button" onClick={handleResetTimer} className="flex-1 rounded border border-dashed border-slate-300 dark:border-slate-700 py-1.5 text-sm text-slate-500">Reset</button>
             </div>
           </div>
 
-          <form onSubmit={handleAddTeam} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-            <p className="text-sm font-semibold">Team Metadata</p>
-            <div className="mt-3 flex flex-col gap-3 text-sm text-slate-600 dark:text-slate-300">
-              <input
-                type="text"
-                placeholder="Team name"
-                value={form.name}
-                onChange={(event) => setForm((prev) => ({ ...prev, name: event.target.value }))}
-                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
-              />
-              <input
-                type="text"
-                placeholder="Members (comma separated, optional)"
-                value={form.members}
-                onChange={(event) => setForm((prev) => ({ ...prev, members: event.target.value }))}
-                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
-              />
-              <input
-                type="text"
-                placeholder="Topic (optional)"
-                value={form.topic}
-                onChange={(event) => setForm((prev) => ({ ...prev, topic: event.target.value }))}
-                className="rounded-lg border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
-              />
-            </div>
-            <div className="mt-4 flex gap-2">
-              <button
-                type="submit"
-                className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-slate-900 hover:brightness-110"
-              >
-                Add Team
-              </button>
-              <button
-                type="button"
-                onClick={handleResetTeams}
-                className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
-              >
-                Reset Teams
-              </button>
+          <form onSubmit={handleAddTeam} className="rounded-lg border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-3">
+            <input
+              type="text"
+              placeholder="Team name"
+              value={form.name}
+              onChange={(e) => setForm((prev) => ({ ...prev, name: e.target.value }))}
+              className="mb-2 w-full rounded border border-slate-200 dark:border-slate-700 bg-panel-light dark:bg-panel px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+            />
+            <input
+              type="text"
+              placeholder="Members (optional)"
+              value={form.members}
+              onChange={(e) => setForm((prev) => ({ ...prev, members: e.target.value }))}
+              className="mb-2 w-full rounded border border-slate-200 dark:border-slate-700 bg-panel-light dark:bg-panel px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+            />
+            <input
+              type="text"
+              placeholder="Topic (optional)"
+              value={form.topic}
+              onChange={(e) => setForm((prev) => ({ ...prev, topic: e.target.value }))}
+              className="mb-2 w-full rounded border border-slate-200 dark:border-slate-700 bg-panel-light dark:bg-panel px-2 py-1.5 text-sm text-slate-900 dark:text-slate-100"
+            />
+            <div className="flex gap-2">
+              <button type="submit" className="flex-1 rounded bg-accent py-1.5 text-sm font-medium text-slate-900">Add</button>
+              <button type="button" onClick={handleResetTeams} className="rounded border border-slate-300 dark:border-slate-700 px-3 py-1.5 text-sm text-slate-500 dark:text-slate-400">Reset all</button>
             </div>
           </form>
         </section>
 
-        <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Dashboard</h2>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Current roster with metadata and quick actions.
-              </p>
-            </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              {teams.length} Teams
-            </span>
-          </div>
+        <section className="rounded-xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-4">
+          <p className="mb-3 text-sm text-slate-500 dark:text-slate-400">{teams.length} teams</p>
 
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
+          <div className="grid gap-3 sm:grid-cols-2">
             {teams.map((team) => {
               const isSelected = selectedTeam && selectedTeam.id === team.id;
               return (
@@ -429,9 +339,9 @@ export default function App() {
                   <button
                     type="button"
                     onClick={() => handleRemoveTeam(team.id)}
-                    className="mt-3 w-full rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
+                    className="mt-2 w-full rounded border border-slate-300 dark:border-slate-700 py-1 text-xs text-slate-500 dark:text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800"
                   >
-                    Remove Team
+                    Remove
                   </button>
                 </article>
               );
