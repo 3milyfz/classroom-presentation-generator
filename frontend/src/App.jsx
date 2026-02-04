@@ -587,17 +587,10 @@ export default function App() {
               </button>
             </div>
           </form>
-
           <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
             <p className="text-sm font-semibold mb-3">Export Data</p>
             <div className="flex gap-2">
-              <button
-                type="button"
-                onClick={() => handleDownloadData("json")}
-                className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
-              >
-                Download JSON
-              </button>
+
               <button
                 type="button"
                 onClick={() => handleDownloadData("csv")}
@@ -621,25 +614,6 @@ export default function App() {
                         Live
                       </span>
                     </div>
-                    <p className="text-sm text-slate-600 dark:text-slate-400">
-                      Topic: <span className="font-medium text-slate-900 dark:text-slate-100">{selectedTeam.topic}</span>
-                    </p>
-                  </div>
-                </div>
-
-                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
-                    Team Members
-                  </p>
-                  <div className="flex flex-wrap gap-2">
-                    {selectedTeam.members.map((member, index) => (
-                      <span
-                        key={index}
-                        className="rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1 text-sm text-slate-700 dark:text-slate-300"
-                      >
-                        {member}
-                      </span>
-                    ))}
                   </div>
                 </div>
               </div>
@@ -699,39 +673,66 @@ export default function App() {
                   Notes are automatically saved to the team's record and included in exports.
                 </p>
               </div>
-
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-                <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
-                  All Teams
-                </p>
-                <div className="space-y-2 max-h-[300px] overflow-y-auto">
-                  {teams.map((team) => {
-                    const isCurrentTeam = team.id === selectedTeam.id;
+              <div className="flex items-center justify-between mb-3">
+                <p className="text-sm font-semibold">Team List</p>
+                <span className="text-xs text-slate-500">
+                  {teams.length} {teams.length === 1 ? 'team' : 'teams'}
+                </span>
+              </div>
+              <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                {teams.length === 0 ? (
+                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                    No teams added yet
+                  </p>
+                ) : (
+                  teams.map((team) => {
+                    const isSelected = selectedTeam && selectedTeam.id === team.id;
                     return (
-                      <button
+                      <div
                         key={team.id}
-                        type="button"
-                        onClick={() => {
-                          setSelectedTeam(team);
-                          fetchStatus();
-                        }}
-                        className={`w-full text-left rounded-lg border px-3 py-2 text-sm transition-colors ${
-                          isCurrentTeam
-                            ? "border-accent bg-sky-50 dark:bg-slate-900/70 text-accent font-semibold"
-                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600"
+                        className={`rounded-lg border px-3 py-2 ${
+                          isSelected
+                            ? "border-accent bg-sky-50 dark:bg-slate-900/70"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
                         }`}
                       >
-                        <div className="flex items-center justify-between gap-2">
-                          <span>{team.name}</span>
-                          {team.presented && (
-                            <span className="text-[10px] text-green-600 dark:text-green-400">✓</span>
-                          )}
+                        <div className="flex items-start justify-between gap-2">
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center gap-2">
+                              <p className="text-sm font-semibold truncate">
+                                {team.name}
+                              </p>
+                              {isSelected && (
+                                <span className="text-[10px] uppercase tracking-wider text-accent">
+                                  Live
+                                </span>
+                              )}
+                            </div>
+                            <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                              {team.topic}
+                            </p>
+                            {team.members && team.members.length > 0 && (
+                              <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 truncate">
+                                {team.members.join(", ")}
+                              </p>
+                            )}
+                          </div>
+                          <button
+                            type="button"
+                            onClick={() => handleRemoveTeam(team.id)}
+                            className="flex-shrink-0 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium"
+                            title="Remove team"
+                          >
+                            Remove
+                          </button>
                         </div>
-                      </button>
+                      </div>
                     );
-                  })}
-                </div>
+                  })
+                )}
               </div>
+            </div>
             </div>
           ) : (
             <div className="flex flex-col items-center justify-center h-[600px] text-center">
