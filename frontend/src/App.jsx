@@ -624,42 +624,94 @@ export default function App() {
                   Notes are saved to the team's record and included in exports.
                 </p>
               </div>
+
               <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
-              <div className="flex items-center justify-between mb-3">
-                <p className="text-sm font-semibold">Team List</p>
-                <span className="text-xs text-slate-500">
-                  {teams.length} {teams.length === 1 ? 'team' : 'teams'}
-                </span>
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold">Team List</p>
+                  <span className="text-xs text-slate-500">
+                    {teams.length} {teams.length === 1 ? 'team' : 'teams'}
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {teams.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                      No teams added yet
+                    </p>
+                  ) : (
+                    teams.map((team) => {
+                      const isSelected = selectedTeam && selectedTeam.id === team.id;
+                      return (
+                        <div
+                          key={team.id}
+                          className={`rounded-lg border px-3 py-2 ${
+                            isSelected
+                              ? "border-accent bg-sky-50 dark:bg-slate-900/70"
+                              : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
+                          }`}
+                        >
+                          <div className="flex items-start justify-between gap-2">
+                            <div className="flex-1 min-w-0">
+                              <div className="flex items-center gap-2">
+                                <p className="text-sm font-semibold truncate">
+                                  {team.name}
+                                </p>
+                                {isSelected && (
+                                  <span className="text-[10px] uppercase tracking-wider text-accent">
+                                    Live
+                                  </span>
+                                )}
+                              </div>
+                              <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
+                                {team.topic}
+                              </p>
+                              {team.members && team.members.length > 0 && (
+                                <p className="text-xs text-slate-600 dark:text-slate-300 mt-1 truncate">
+                                  {team.members.join(", ")}
+                                </p>
+                              )}
+                            </div>
+                            <button
+                              type="button"
+                              onClick={() => handleRemoveTeam(team.id)}
+                              className="flex-shrink-0 text-xs text-red-600 dark:text-red-400 hover:text-red-700 dark:hover:text-red-300 font-medium"
+                              title="Remove team"
+                            >
+                              Remove
+                            </button>
+                          </div>
+                        </div>
+                      );
+                    })
+                  )}
+                </div>
               </div>
-              <div className="space-y-2 max-h-[400px] overflow-y-auto">
-                {teams.length === 0 ? (
-                  <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
-                    No teams added yet
-                  </p>
-                ) : (
-                  teams.map((team) => {
-                    const isSelected = selectedTeam && selectedTeam.id === team.id;
-                    return (
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {/* TEAM LIST - Above empty state when no team selected */}
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-sm font-semibold">Team List</p>
+                  <span className="text-xs text-slate-500">
+                    {teams.length} {teams.length === 1 ? 'team' : 'teams'}
+                  </span>
+                </div>
+                <div className="space-y-2 max-h-[400px] overflow-y-auto">
+                  {teams.length === 0 ? (
+                    <p className="text-sm text-slate-500 dark:text-slate-400 text-center py-4">
+                      No teams added yet. Add teams using the control panel.
+                    </p>
+                  ) : (
+                    teams.map((team) => (
                       <div
                         key={team.id}
-                        className={`rounded-lg border px-3 py-2 ${
-                          isSelected
-                            ? "border-accent bg-sky-50 dark:bg-slate-900/70"
-                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800"
-                        }`}
+                        className="rounded-lg border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-2"
                       >
                         <div className="flex items-start justify-between gap-2">
                           <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2">
-                              <p className="text-sm font-semibold truncate">
-                                {team.name}
-                              </p>
-                              {isSelected && (
-                                <span className="text-[10px] uppercase tracking-wider text-accent">
-                                  Live
-                                </span>
-                              )}
-                            </div>
+                            <p className="text-sm font-semibold truncate">
+                              {team.name}
+                            </p>
                             <p className="text-xs text-slate-500 dark:text-slate-400 mt-1 truncate">
                               {team.topic}
                             </p>
@@ -679,21 +731,21 @@ export default function App() {
                           </button>
                         </div>
                       </div>
-                    );
-                  })
-                )}
+                    ))
+                  )}
+                </div>
               </div>
-            </div>
-            </div>
-          ) : (
-            <div className="flex flex-col items-center justify-center h-[600px] text-center">
-              <div className="rounded-full border-4 border-dashed border-slate-200 dark:border-slate-800 w-24 h-24 flex items-center justify-center mb-6">
-                <span className="text-4xl">🎤</span>
+
+              {/* EMPTY STATE - Below team list when no team selected */}
+              <div className="flex flex-col items-center justify-center py-12 text-center">
+                <div className="rounded-full border-4 border-dashed border-slate-200 dark:border-slate-800 w-24 h-24 flex items-center justify-center mb-6">
+                  <span className="text-4xl">🎤</span>
+                </div>
+                <h2 className="text-xl font-semibold mb-2">No Team Selected</h2>
+                <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
+                  Click "Pick next" in the control panel to begin a presentation session.
+                </p>
               </div>
-              <h2 className="text-xl font-semibold mb-2">No Team Selected</h2>
-              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
-                Click "Select Next Team" in the control panel to begin a presentation session.
-              </p>
             </div>
           )}
         </section>
