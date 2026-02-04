@@ -7,9 +7,11 @@
   "scripts": {
     "dev": "node server.js",
     "start": "node server.js",
+    "build": "prisma generate && prisma migrate deploy",
     "db:generate": "prisma generate",
     "db:push": "prisma db push",
     "db:migrate": "prisma migrate dev",
+    "db:migrate:deploy": "prisma migrate deploy",
     "db:seed": "node prisma/seed.js"
   },
   "dependencies": {
