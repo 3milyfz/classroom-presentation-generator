@@ -233,6 +233,21 @@ app.listen(port, "0.0.0.0", () => {
 
 // const fs = require("fs");
 
+app.get("/debug/db-stats", async (req, res) => {
+  const userCount = await prisma.user.count();
+  const teamCount = await prisma.team.count();
+  res.json({ userCount, teamCount });
+});
+
+app.get("/debug/runtime-db", (req, res) => {
+  res.json({
+    DATABASE_URL: process.env.DATABASE_URL,
+    cwd: process.cwd(),
+    nodeEnv: process.env.NODE_ENV
+  });
+});
+
+
 // app.get("/debug/db-file", (req, res) => {
 //   const path = "/data/app.db";
 //   try {
