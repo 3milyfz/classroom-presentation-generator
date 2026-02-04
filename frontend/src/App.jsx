@@ -509,7 +509,7 @@ export default function App() {
               />
               <input
                 type="text"
-                placeholder="Members (comma separated, optional)"
+                placeholder="Members (optional)"
                 value={form.members}
                 onChange={(event) => setForm((prev) => ({ ...prev, members: event.target.value }))}
                 className="rounded-lg border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-3 py-2 text-sm text-slate-900 dark:text-slate-100"
