@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useState, useRef } from "react";
 import { useAuth } from "./auth.jsx";
 import { useTheme } from "./theme.jsx";
 import Login from "./Login.jsx";
@@ -30,6 +30,14 @@ export default function App() {
   const [phase, setPhase] = useState("ready");
   const [remainingSeconds, setRemainingSeconds] = useState(0);
   const [timerRunning, setTimerRunning] = useState(false);
+  const [recordedPresentationSeconds, setRecordedPresentationSeconds] = useState(0);
+  const [recordedQaSeconds, setRecordedQaSeconds] = useState(0);
+  const [notes, setNotes] = useState("");
+  const [isSavingNotes, setIsSavingNotes] = useState(false);
+  
+  // Use refs to track elapsed time accurately
+  const presentationStartTime = useRef(null);
+  const qaStartTime = useRef(null);
 
   const warningActive = useMemo(
     () => phase === "presentation" && remainingSeconds <= 120,
@@ -57,25 +65,111 @@ export default function App() {
     fetchStatus();
   }, [token]);
 
+  // Record presentation time only
+  const recordPresentationTime = async (seconds) => {
+    if (!selectedTeam) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/teams/${selectedTeam.id}/presentation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          presentationSeconds: Math.max(0, seconds),
+          qaSeconds: 0, // Q&A not completed yet
+        }),
+      });
+
+      if (response.status === 401) return logout();
+      
+      if (response.ok) {
+        console.log(`✓ Presentation time recorded: ${formatTime(seconds)}`);
+        setRecordedPresentationSeconds(seconds);
+      }
+    } catch (error) {
+      console.error("Failed to record presentation time:", error);
+    }
+  };
+
+  // Record complete session (presentation + Q&A)
+  const recordCompleteSession = async (presentationSecs, qaSecs) => {
+    if (!selectedTeam) return;
+    
+    try {
+      const response = await fetch(`${API_BASE}/api/teams/${selectedTeam.id}/presentation`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({
+          presentationSeconds: Math.max(0, presentationSecs),
+          qaSeconds: Math.max(0, qaSecs),
+        }),
+      });
+
+      if (response.status === 401) return logout();
+      
+      if (response.ok) {
+        console.log(`✓ Complete session recorded - Presentation: ${formatTime(presentationSecs)}, Q&A: ${formatTime(qaSecs)}`);
+        setRecordedQaSeconds(qaSecs);
+      }
+    } catch (error) {
+      console.error("Failed to record session:", error);
+      window.alert("Network error while recording session times.");
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!selectedTeam) return;
+    
+    setIsSavingNotes(true);
+    try {
+      const response = await fetch(`${API_BASE}/api/teams/${selectedTeam.id}/notes`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json", ...getAuthHeaders() },
+        body: JSON.stringify({ notes }),
+      });
+
+      if (response.status === 401) return logout();
+      
+      if (response.ok) {
+        console.log(`✓ Notes saved for ${selectedTeam.name}`);
+        // Update the selected team with new notes
+        setSelectedTeam(prev => ({ ...prev, notes }));
+        // Update teams list
+        setTeams(prev => prev.map(team => 
+          team.id === selectedTeam.id ? { ...team, notes } : team
+        ));
+      } else {
+        window.alert("Failed to save notes.");
+      }
+    } catch (error) {
+      console.error("Failed to save notes:", error);
+      window.alert("Network error while saving notes.");
+    } finally {
+      setIsSavingNotes(false);
+    }
+  };
+
+  useEffect(() => {
+    if (selectedTeam) {
+      setNotes(selectedTeam.notes || "");
+    } else {
+      setNotes("");
+    }
+  }, [selectedTeam?.id]);
+
   useEffect(() => {
     if (!timerRunning) {
       return;
     }
     if (remainingSeconds <= 0) {
-      if (phase === "presentation") {
-        setPhase("qa");
-        setRemainingSeconds(qaMinutes * 60);
-      } else {
-        setTimerRunning(false);
-        setPhase("complete");
-      }
+      // Timer reached 00:00, just pause it
+      setTimerRunning(false);
       return;
     }
     const interval = setInterval(() => {
       setRemainingSeconds((prev) => prev - 1);
     }, 1000);
     return () => clearInterval(interval);
-  }, [timerRunning, remainingSeconds, phase, qaMinutes]);
+  }, [timerRunning, remainingSeconds, phase]);
 
   const handleRandomize = async () => {
     setLoading(true);
@@ -162,6 +256,10 @@ export default function App() {
     if (phase === "ready" || phase === "complete") {
       setPhase("presentation");
       setRemainingSeconds(presentationMinutes * 60);
+      setRecordedPresentationSeconds(0);
+      setRecordedQaSeconds(0);
+      presentationStartTime.current = Date.now();
+      qaStartTime.current = null;
     }
     setTimerRunning(true);
   };
@@ -170,10 +268,86 @@ export default function App() {
     setTimerRunning(false);
   };
 
+  const handleQaTransition = () => {
+    if (phase !== "presentation") {
+      window.alert("Q&A transition is only available during presentation phase.");
+      return;
+    }
+
+    // Calculate actual presentation time
+    const actualTime = presentationStartTime.current 
+      ? Math.floor((Date.now() - presentationStartTime.current) / 1000)
+      : presentationMinutes * 60 - remainingSeconds;
+    
+    // Record presentation time
+    recordPresentationTime(actualTime);
+    
+    // Switch to Q&A phase
+    setPhase("qa");
+    setRemainingSeconds(qaMinutes * 60);
+    qaStartTime.current = Date.now();
+    
+    // Automatically start Q&A timer
+    setTimerRunning(true);
+  };
+
   const handleResetTimer = () => {
+    // If in Q&A phase and Q&A has started, record the session
+    if (phase === "qa" && qaStartTime.current) {
+      const actualQaTime = Math.floor((Date.now() - qaStartTime.current) / 1000);
+      
+      // Record complete session
+      recordCompleteSession(recordedPresentationSeconds, actualQaTime);
+    }
+
+    // Reset everything
     setTimerRunning(false);
     setPhase("ready");
     setRemainingSeconds(0);
+    setRecordedPresentationSeconds(0);
+    setRecordedQaSeconds(0);
+    presentationStartTime.current = null;
+    qaStartTime.current = null;
+  };
+
+  const handleDownloadData = async (format = "json") => {
+    try {
+      const response = await fetch(`${API_BASE}/api/export?format=${format}`, {
+        headers: getAuthHeaders(),
+      });
+
+      if (response.status === 401) return logout();
+      
+      if (!response.ok) {
+        window.alert("Failed to download data.");
+        return;
+      }
+
+      if (format === "csv") {
+        const blob = await response.blob();
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `teams-export-${Date.now()}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      } else {
+        const data = await response.json();
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement("a");
+        a.href = url;
+        a.download = `teams-export-${Date.now()}.json`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        window.URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      window.alert("Network error while downloading data.");
+    }
   };
 
   if (authLoading) {
@@ -220,18 +394,18 @@ export default function App() {
             {theme === "dark" ? "☀️" : "🌙"}
           </button>
           <div className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel px-6 py-4 text-center">
-          <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-            Teams Remaining
-          </p>
-          <p className="mt-2 text-3xl font-semibold">{remainingCount}</p>
-          <button
-            type="button"
-            onClick={handleResetRandomizer}
-            className="mt-3 w-full rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
-          >
-            Reset Round
-          </button>
-        </div>
+            <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+              Teams Remaining
+            </p>
+            <p className="mt-2 text-3xl font-semibold">{remainingCount}</p>
+            <button
+              type="button"
+              onClick={handleResetRandomizer}
+              className="mt-3 w-full rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
+            >
+              Reset Round
+            </button>
+          </div>
         </div>
       </header>
 
@@ -271,6 +445,17 @@ export default function App() {
                   <p className="mt-2 text-sm">
                     Members: {selectedTeam.members.join(", ")}
                   </p>
+                  {(recordedPresentationSeconds > 0 || recordedQaSeconds > 0) && (
+                    <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 text-xs space-y-1">
+                      <p className="text-slate-500 dark:text-slate-400">Recorded Times:</p>
+                      {recordedPresentationSeconds > 0 && (
+                        <p>Presentation: {formatTime(recordedPresentationSeconds)}</p>
+                      )}
+                      {recordedQaSeconds > 0 && (
+                        <p>Q&A: {formatTime(recordedQaSeconds)}</p>
+                      )}
+                    </div>
+                  )}
                 </>
               ) : (
                 <p className="text-sm text-slate-600 dark:text-slate-400">No team selected yet.</p>
@@ -304,7 +489,7 @@ export default function App() {
             </div>
             <div className="mt-4 rounded-xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-4 text-center">
               <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
-                {phase === "presentation" ? "Presentation" : phase === "qa" ? "Q&A" : "Ready"}
+                {phase === "presentation" ? "Presentation" : phase === "qa" ? "Q&A" : phase === "complete" ? "Complete" : "Ready"}
               </p>
               <p
                 className={`mt-2 text-3xl font-semibold ${
@@ -318,30 +503,47 @@ export default function App() {
                   2-minute warning
                 </p>
               )}
+              {phase === "complete" && (
+                <p className="mt-2 text-xs uppercase tracking-[0.2em] text-green-600 dark:text-green-400">
+                  Session Complete ✓
+                </p>
+              )}
             </div>
-            <div className="mt-4 flex gap-2">
+            <div className="mt-4 grid grid-cols-2 gap-2">
               <button
                 type="button"
                 onClick={handleStartTimer}
-                className="flex-1 rounded-full bg-accent px-4 py-2 text-sm font-semibold text-slate-900 hover:brightness-110"
+                disabled={!selectedTeam}
+                className="rounded-full bg-accent px-4 py-2 text-sm font-semibold text-slate-900 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
               >
                 Start
               </button>
               <button
                 type="button"
                 onClick={handlePauseTimer}
-                className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
+                className="rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
               >
                 Pause
               </button>
               <button
                 type="button"
+                onClick={handleQaTransition}
+                disabled={phase !== "presentation"}
+                className="rounded-full bg-blue-600 px-4 py-2 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
+              >
+                Q&A
+              </button>
+              <button
+                type="button"
                 onClick={handleResetTimer}
-                className="flex-1 rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
+                className="rounded-full border border-dashed border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
               >
                 Reset
               </button>
             </div>
+            <p className="mt-3 text-xs text-center text-slate-500 dark:text-slate-400">
+              Click "Q&A" to end presentation and start Q&A. Click "Reset" after Q&A to record times.
+            </p>
           </div>
 
           <form onSubmit={handleAddTeam} className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
@@ -385,58 +587,163 @@ export default function App() {
               </button>
             </div>
           </form>
+
+          <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+            <p className="text-sm font-semibold mb-3">Export Data</p>
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => handleDownloadData("json")}
+                className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
+              >
+                Download JSON
+              </button>
+              <button
+                type="button"
+                onClick={() => handleDownloadData("csv")}
+                className="flex-1 rounded-full border border-slate-300 dark:border-slate-700 px-4 py-2 text-sm font-semibold text-slate-700 dark:text-slate-200 hover:border-slate-400 dark:hover:border-slate-500"
+              >
+                Download CSV
+              </button>
+            </div>
+          </div>
         </section>
 
         <section className="rounded-2xl border border-slate-200 dark:border-slate-800 bg-panel-light dark:bg-panel p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <h2 className="text-lg font-semibold">Dashboard</h2>
-              <p className="mt-1 text-sm text-slate-600 dark:text-slate-400">
-                Current roster with metadata and quick actions.
-              </p>
-            </div>
-            <span className="text-xs uppercase tracking-[0.2em] text-slate-500">
-              {teams.length} Teams
-            </span>
-          </div>
-
-          <div className="mt-6 grid gap-4 sm:grid-cols-2">
-            {teams.map((team) => {
-              const isSelected = selectedTeam && selectedTeam.id === team.id;
-              return (
-                <article
-                  key={team.id}
-                  className={`rounded-xl border px-4 py-3 ${
-                    isSelected
-                      ? "border-accent bg-sky-50 dark:bg-slate-900/70 shadow-[0_0_0_1px_rgba(56,189,248,0.6)]"
-                      : "border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight"
-                  }`}
-                >
-                  <div className="flex items-start justify-between gap-4">
-                    <div>
-                      <p className="text-sm font-semibold">{team.name}</p>
-                      <p className="mt-1 text-xs text-slate-500 dark:text-slate-400">Topic: {team.topic}</p>
-                    </div>
-                    {isSelected && (
-                      <span className="rounded-full border border-accent px-2 py-1 text-[10px] uppercase tracking-[0.3em] text-accent">
+          {selectedTeam ? (
+            <div className="space-y-6">
+              <div>
+                <div className="flex items-start justify-between gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="flex items-center gap-3 mb-2">
+                      <h2 className="text-2xl font-semibold">{selectedTeam.name}</h2>
+                      <span className="rounded-full border border-accent bg-sky-50 dark:bg-slate-900/70 px-3 py-1 text-xs uppercase tracking-[0.2em] text-accent">
                         Live
                       </span>
+                    </div>
+                    <p className="text-sm text-slate-600 dark:text-slate-400">
+                      Topic: <span className="font-medium text-slate-900 dark:text-slate-100">{selectedTeam.topic}</span>
+                    </p>
+                  </div>
+                </div>
+
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
+                    Team Members
+                  </p>
+                  <div className="flex flex-wrap gap-2">
+                    {selectedTeam.members.map((member, index) => (
+                      <span
+                        key={index}
+                        className="rounded-full border border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 px-3 py-1 text-sm text-slate-700 dark:text-slate-300"
+                      >
+                        {member}
+                      </span>
+                    ))}
+                  </div>
+                </div>
+              </div>
+
+              {(recordedPresentationSeconds > 0 || recordedQaSeconds > 0) && (
+                <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
+                    Recorded Times
+                  </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    {recordedPresentationSeconds > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Presentation</p>
+                        <p className="text-2xl font-semibold mt-1">{formatTime(recordedPresentationSeconds)}</p>
+                      </div>
+                    )}
+                    {recordedQaSeconds > 0 && (
+                      <div>
+                        <p className="text-xs text-slate-500 dark:text-slate-400">Q&A</p>
+                        <p className="text-2xl font-semibold mt-1">{formatTime(recordedQaSeconds)}</p>
+                      </div>
                     )}
                   </div>
-                  <p className="mt-2 text-xs text-slate-600 dark:text-slate-300">
-                    Members: {team.members.join(", ")}
+                  {recordedPresentationSeconds > 0 && recordedQaSeconds > 0 && (
+                    <div className="mt-4 pt-4 border-t border-slate-200 dark:border-slate-700">
+                      <p className="text-xs text-slate-500 dark:text-slate-400">Total Time</p>
+                      <p className="text-2xl font-semibold mt-1">
+                        {formatTime(recordedPresentationSeconds + recordedQaSeconds)}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
+
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+                <div className="flex items-center justify-between mb-3">
+                  <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400">
+                    Instructor Notes
                   </p>
                   <button
                     type="button"
-                    onClick={() => handleRemoveTeam(team.id)}
-                    className="mt-3 w-full rounded-full border border-slate-300 dark:border-slate-700 px-3 py-1 text-xs font-semibold text-slate-500 dark:text-slate-400 hover:border-slate-400 dark:hover:border-slate-500"
+                    onClick={handleSaveNotes}
+                    disabled={isSavingNotes}
+                    className="rounded-full border border-accent bg-accent px-3 py-1 text-xs font-semibold text-slate-900 hover:brightness-110 disabled:opacity-50 disabled:cursor-not-allowed"
                   >
-                    Remove Team
+                    {isSavingNotes ? "Saving..." : "Save Notes"}
                   </button>
-                </article>
-              );
-            })}
-          </div>
+                </div>
+                <textarea
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Add feedback, observations, or comments about this team's presentation..."
+                  rows={12}
+                  className="w-full rounded-lg border border-slate-200 dark:border-slate-800 bg-white dark:bg-slate-800 px-3 py-2 text-sm text-slate-900 dark:text-slate-100 placeholder:text-slate-400 dark:placeholder:text-slate-500 focus:outline-none focus:ring-2 focus:ring-accent focus:border-transparent resize-none"
+                />
+                <p className="mt-2 text-xs text-slate-500 dark:text-slate-400">
+                  Notes are automatically saved to the team's record and included in exports.
+                </p>
+              </div>
+
+              <div className="rounded-xl border border-slate-200 dark:border-slate-800 bg-slate-50 dark:bg-midnight p-4">
+                <p className="text-xs uppercase tracking-[0.2em] text-slate-500 dark:text-slate-400 mb-3">
+                  All Teams
+                </p>
+                <div className="space-y-2 max-h-[300px] overflow-y-auto">
+                  {teams.map((team) => {
+                    const isCurrentTeam = team.id === selectedTeam.id;
+                    return (
+                      <button
+                        key={team.id}
+                        type="button"
+                        onClick={() => {
+                          setSelectedTeam(team);
+                          fetchStatus();
+                        }}
+                        className={`w-full text-left rounded-lg border px-3 py-2 text-sm transition-colors ${
+                          isCurrentTeam
+                            ? "border-accent bg-sky-50 dark:bg-slate-900/70 text-accent font-semibold"
+                            : "border-slate-200 dark:border-slate-700 bg-white dark:bg-slate-800 text-slate-700 dark:text-slate-300 hover:border-slate-300 dark:hover:border-slate-600"
+                        }`}
+                      >
+                        <div className="flex items-center justify-between gap-2">
+                          <span>{team.name}</span>
+                          {team.presented && (
+                            <span className="text-[10px] text-green-600 dark:text-green-400">✓</span>
+                          )}
+                        </div>
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center h-[600px] text-center">
+              <div className="rounded-full border-4 border-dashed border-slate-200 dark:border-slate-800 w-24 h-24 flex items-center justify-center mb-6">
+                <span className="text-4xl">🎤</span>
+              </div>
+              <h2 className="text-xl font-semibold mb-2">No Team Selected</h2>
+              <p className="text-sm text-slate-600 dark:text-slate-400 max-w-sm">
+                Click "Select Next Team" in the control panel to begin a presentation session.
+              </p>
+            </div>
+          )}
         </section>
       </div>
     </div>
