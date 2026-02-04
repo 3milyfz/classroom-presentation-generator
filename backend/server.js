@@ -231,39 +231,3 @@ app.listen(port, "0.0.0.0", () => {
   console.log(`Database: ${process.env.DATABASE_URL ? 'Connected' : 'Not configured'}`);
 });
 
-// const fs = require("fs");
-
-app.get("/debug/db-stats", async (req, res) => {
-  const userCount = await prisma.user.count();
-  const teamCount = await prisma.team.count();
-  res.json({ userCount, teamCount });
-});
-
-app.get("/debug/runtime-db", (req, res) => {
-  res.json({
-    DATABASE_URL: process.env.DATABASE_URL,
-    cwd: process.cwd(),
-    nodeEnv: process.env.NODE_ENV
-  });
-});
-
-
-// app.get("/debug/db-file", (req, res) => {
-//   const path = "/data/app.db";
-//   try {
-//     const stat = fs.statSync(path);
-//     res.json({ path, exists: true, size: stat.size });
-//   } catch {
-//     res.json({ path, exists: false });
-//   }
-// });
-
-// app.get("/debug/data-dir", (req, res) => {
-//   const fs = require("fs");
-//   try {
-//     const files = fs.readdirSync("/data");
-//     res.json({ ok: true, files });
-//   } catch (e) {
-//     res.json({ ok: false, error: String(e) });
-//   }
-// });
