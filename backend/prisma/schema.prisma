@@ -17,13 +17,14 @@ model User {
 }
 
 model Team {
-  id        String   @id @default(cuid())
-  userId    String
-  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  name      String
-  topic     String   @default("TBD")
-  members   String   // JSON array of strings
-  createdAt DateTime @default(now())
+  id            String              @id @default(cuid())
+  userId        String
+  user          User                @relation(fields: [userId], references: [id], onDelete: Cascade)
+  name          String
+  topic         String              @default("TBD")
+  members       String              // JSON array of strings
+  createdAt     DateTime            @default(now())
+  presentations TeamPresentation[]  // New relation: multiple presentations allowed
 }
 
 model SessionState {
@@ -32,4 +33,15 @@ model SessionState {
   lastSelectedTeamId String? // Team id or null
   remainingTeamIds  String   // JSON array of team ids
   updatedAt         DateTime @updatedAt
+}
+
+model TeamPresentation {
+  id                    String   @id @default(cuid())
+  teamId                String
+  team                  Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
+  presentationSeconds   Int      // Actual presentation time in seconds
+  qaSeconds             Int      // Actual Q&A time in seconds
+  presentedAt           DateTime @default(now())
+  
+  @@index([teamId])
 }
