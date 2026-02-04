@@ -172,7 +172,7 @@ export default function SetupPage() {
           disabled={teams.length === 0}
           className="w-full rounded-full bg-blue-600 px-6 py-3 text-sm font-semibold text-white hover:bg-blue-700 disabled:opacity-50 disabled:cursor-not-allowed"
         >
-          Continue to Presentation →
+          Start Session →
         </button>
       </div>
     </div>
