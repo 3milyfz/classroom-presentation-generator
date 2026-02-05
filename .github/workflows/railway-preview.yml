@@ -14,7 +14,7 @@ concurrency:
   cancel-in-progress: true
 
 env:
-  RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+  RAILWAY_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
   LINK_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
   DUPLICATE_FROM_ID: ${{ secrets.RAILWAY_DUPLICATE_FROM_ENV_ID }}
   SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
