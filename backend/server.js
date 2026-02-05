@@ -52,9 +52,9 @@ function requireAuth(req, res, next) {
   }
 }
 
-app.get("/api/health", (req, res) => {
-  res.json({ status: "ok" });
-});
+// app.get("/api/health", (req, res) => {
+//   res.json({ status: "ok" });
+// });
 
 app.post("/api/auth/register", async (req, res) => {
   const { email, password } = req.body || {};
