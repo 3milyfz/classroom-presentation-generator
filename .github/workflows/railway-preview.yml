@@ -19,59 +19,66 @@ env:
   DUPLICATE_FROM_ID: ${{ secrets.RAILWAY_DUPLICATE_FROM_ENV_ID }}
   SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
 
-  # Preview-only vars (ephemeral DB) 
-  ENV_NAME_1: DATABASE_URL
-  ENV_VALUE_1: ${{ secrets.PREVIEW_DATABASE_URL }}
-  ENV_NAME_2: JWT_SECRET
-  ENV_VALUE_2: ${{ secrets.PREVIEW_JWT_SECRET }}
+  # Preview-only vars (ephemeral DB)
+  PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
+  PREVIEW_JWT_SECRET: ${{ secrets.PREVIEW_JWT_SECRET }}
 
 jobs:
   pr_opened_or_updated:
     if: github.event.action != 'closed'
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
+
     steps:
       - name: Link to Railway project + base env
-        run: railway link --project ${{ env.LINK_PROJECT_ID }} --environment ${{ env.DUPLICATE_FROM_ID }}
+        run: railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "${{ env.DUPLICATE_FROM_ID }}"
 
-      - name: Create or update PR environment
+      - name: Create or update PR environment (robust)
         run: |
+          set -e
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
-          
-          # Check if environment exists
-          if railway environment list | grep -q "$ENV_NAME"; then
-            echo "Environment $ENV_NAME already exists, updating..."
-            railway link --environment "$ENV_NAME"
-            railway variables set "${{ env.ENV_NAME_1 }}=${{ env.ENV_VALUE_1 }}" --service ${{ env.SERVICE_ID }}
-            railway variables set "${{ env.ENV_NAME_2 }}=${{ env.ENV_VALUE_2 }}" --service ${{ env.SERVICE_ID }}
+          BRANCH="${{ github.head_ref }}"
+
+          echo "Target preview environment: $ENV_NAME (branch: $BRANCH)"
+
+          echo "Attempting to create environment (copy from base)..."
+          if railway environment new "$ENV_NAME" \
+              --copy "${{ env.DUPLICATE_FROM_ID }}" \
+              --service-variable "${{ env.SERVICE_ID }}" "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}" \
+              --service-variable "${{ env.SERVICE_ID }}" "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}" \
+              --service-config "${{ env.SERVICE_ID }}" "source.branch" "$BRANCH"; then
+            echo "Created $ENV_NAME"
           else
-            echo "Creating new environment $ENV_NAME..."
-            railway environment new "$ENV_NAME" \
-              --copy ${{ env.DUPLICATE_FROM_ID }} \
-              --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_1 }}=${{ env.ENV_VALUE_1 }}" \
-              --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_2 }}=${{ env.ENV_VALUE_2 }}" \
-              --service-config ${{ env.SERVICE_ID }} "source.branch" "${{ github.head_ref }}"
+            echo "Create failed (likely exists). Updating $ENV_NAME..."
+            railway link --environment "$ENV_NAME"
+
+            # Ensure vars are set for this env/service
+            railway variables set "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}" --service "${{ env.SERVICE_ID }}"
+            railway variables set "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}" --service "${{ env.SERVICE_ID }}"
+
+            # Ensure it deploys the PR branch
+            railway service config --service "${{ env.SERVICE_ID }}" --set "source.branch=$BRANCH"
           fi
 
       - name: Deploy to preview environment
         run: |
-          railway link --environment "pr-${{ github.event.pull_request.number }}"
-          railway up --service ${{ env.SERVICE_ID }} --detach
+          set -e
+          ENV_NAME="pr-${{ github.event.pull_request.number }}"
+          railway link --environment "$ENV_NAME"
+          railway up --service "${{ env.SERVICE_ID }}" --detach
 
   pr_closed:
     if: github.event.action == 'closed'
     runs-on: ubuntu-latest
     container: ghcr.io/railwayapp/cli:latest
+
     steps:
       - name: Link to Railway project + base env
-        run: railway link --project ${{ env.LINK_PROJECT_ID }} --environment ${{ env.DUPLICATE_FROM_ID }}
+        run: railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "${{ env.DUPLICATE_FROM_ID }}"
 
       - name: Delete PR environment
         run: |
+          set -e
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
-          if railway environment list | grep -q "$ENV_NAME"; then
-            echo "Deleting environment $ENV_NAME..."
-            railway environment delete "$ENV_NAME" --yes || true
-          else
-            echo "Environment $ENV_NAME does not exist, skipping..."
-          fi
+          echo "Deleting $ENV_NAME (if it exists)..."
+          railway environment delete "$ENV_NAME" --yes || true
