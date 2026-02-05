@@ -34,13 +34,29 @@ jobs:
       - name: Link to Railway project + base env
         run: railway link --project ${{ env.LINK_PROJECT_ID }} --environment ${{ env.DUPLICATE_FROM_ID }}
 
-      - name: Create / update PR environment
+      - name: Create or update PR environment
         run: |
-          railway environment new pr-${{ github.event.pull_request.number }} \
-            --copy ${{ env.DUPLICATE_FROM_ID }} \
-            --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_1 }}=${{ env.ENV_VALUE_1 }}" \
-            --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_2 }}=${{ env.ENV_VALUE_2 }}" \
-            --service-config ${{ env.SERVICE_ID }} "source.branch" "${{ github.head_ref }}"
+          ENV_NAME="pr-${{ github.event.pull_request.number }}"
+          
+          # Check if environment exists
+          if railway environment list | grep -q "$ENV_NAME"; then
+            echo "Environment $ENV_NAME already exists, updating..."
+            railway link --environment "$ENV_NAME"
+            railway variables set "${{ env.ENV_NAME_1 }}=${{ env.ENV_VALUE_1 }}" --service ${{ env.SERVICE_ID }}
+            railway variables set "${{ env.ENV_NAME_2 }}=${{ env.ENV_VALUE_2 }}" --service ${{ env.SERVICE_ID }}
+          else
+            echo "Creating new environment $ENV_NAME..."
+            railway environment new "$ENV_NAME" \
+              --copy ${{ env.DUPLICATE_FROM_ID }} \
+              --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_1 }}=${{ env.ENV_VALUE_1 }}" \
+              --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_2 }}=${{ env.ENV_VALUE_2 }}" \
+              --service-config ${{ env.SERVICE_ID }} "source.branch" "${{ github.head_ref }}"
+          fi
+
+      - name: Deploy to preview environment
+        run: |
+          railway link --environment "pr-${{ github.event.pull_request.number }}"
+          railway up --service ${{ env.SERVICE_ID }} --detach
 
   pr_closed:
     if: github.event.action == 'closed'
@@ -51,4 +67,11 @@ jobs:
         run: railway link --project ${{ env.LINK_PROJECT_ID }} --environment ${{ env.DUPLICATE_FROM_ID }}
 
       - name: Delete PR environment
-        run: railway environment delete pr-${{ github.event.pull_request.number }} || true
+        run: |
+          ENV_NAME="pr-${{ github.event.pull_request.number }}"
+          if railway environment list | grep -q "$ENV_NAME"; then
+            echo "Deleting environment $ENV_NAME..."
+            railway environment delete "$ENV_NAME" --yes || true
+          else
+            echo "Environment $ENV_NAME does not exist, skipping..."
+          fi
