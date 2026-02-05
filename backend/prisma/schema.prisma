@@ -23,16 +23,17 @@ model Team {
   name          String
   topic         String              @default("TBD")
   members       String              // JSON array of strings
-  notes         String              @default("")  // New field for instructor notes
+  notes         String              @default("")
+  grade         String              @default("")  // New field for grade (stored as string for flexibility: A+, 95%, etc.)
   createdAt     DateTime            @default(now())
-  presentations TeamPresentation[]  // New relation: multiple presentations allowed
+  presentations TeamPresentation[]
 }
 
 model SessionState {
   userId            String   @id
   user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  lastSelectedTeamId String? // Team id or null
-  remainingTeamIds  String   // JSON array of team ids
+  lastSelectedTeamId String?
+  remainingTeamIds  String
   updatedAt         DateTime @updatedAt
 }
 
@@ -40,8 +41,8 @@ model TeamPresentation {
   id                    String   @id @default(cuid())
   teamId                String
   team                  Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
-  presentationSeconds   Int      // Actual presentation time in seconds
-  qaSeconds             Int      // Actual Q&A time in seconds
+  presentationSeconds   Int
+  qaSeconds             Int
   presentedAt           DateTime @default(now())
   
   @@index([teamId])

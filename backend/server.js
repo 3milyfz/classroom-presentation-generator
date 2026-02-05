@@ -7,7 +7,7 @@ const { PrismaClient } = require("@prisma/client");
 
 const prisma = new PrismaClient();
 const app = express();
-const port = process.env.PORT || 5001;
+const port = process.env.PORT || 8080;
 
 const JWT_SECRET = process.env.JWT_SECRET;
 if (!JWT_SECRET) {
@@ -90,6 +90,12 @@ async function getOrCreateSession(userId) {
 app.get("/api/teams", requireAuth, async (req, res) => {
   const teams = await prisma.team.findMany({
     where: { userId: req.userId },
+    include: {
+      presentations: {
+        orderBy: { presentedAt: 'desc' },
+        take: 1
+      }
+    },
     orderBy: { createdAt: "asc" },
   });
   const normalized = teams.map((t) => ({
@@ -98,6 +104,8 @@ app.get("/api/teams", requireAuth, async (req, res) => {
     topic: t.topic,
     members: JSON.parse(t.members || "[]"),
     notes: t.notes || "",
+    grade: t.grade || "",
+    presentations: t.presentations || [],
   }));
   res.json({ teams: normalized });
 });
@@ -109,6 +117,12 @@ app.get("/api/status", requireAuth, async (req, res) => {
   if (session.lastSelectedTeamId) {
     const team = await prisma.team.findFirst({
       where: { id: session.lastSelectedTeamId, userId: req.userId },
+      include: {
+        presentations: {
+          orderBy: { presentedAt: 'desc' },
+          take: 1
+        }
+      }
     });
     if (team) {
       lastSelected = {
@@ -117,6 +131,8 @@ app.get("/api/status", requireAuth, async (req, res) => {
         topic: team.topic,
         members: JSON.parse(team.members || "[]"),
         notes: team.notes || "",
+        grade: team.grade || "",
+        presentations: team.presentations || [],
       };
     }
   }
@@ -144,6 +160,12 @@ app.post("/api/randomize", requireAuth, async (req, res) => {
   });
   const team = await prisma.team.findFirst({
     where: { id: selectedId, userId: req.userId },
+    include: {
+      presentations: {
+        orderBy: { presentedAt: 'desc' },
+        take: 1
+      }
+    }
   });
   if (!team) return res.status(500).json({ message: "Team not found." });
   const selected = {
@@ -151,7 +173,9 @@ app.post("/api/randomize", requireAuth, async (req, res) => {
     name: team.name,
     topic: team.topic,
     members: JSON.parse(team.members || "[]"),
-    notes: team.notes || "",  
+    notes: team.notes || "",
+    grade: team.grade || "",
+    presentations: team.presentations || [],
   };
   res.json({ team: selected, remainingCount: remainingIds.length });
 });
@@ -251,7 +275,8 @@ app.delete("/api/teams/:id", requireAuth, async (req, res) => {
       name: team.name, 
       topic: team.topic, 
       members: JSON.parse(team.members || "[]"),
-      notes: team.notes || "",  
+      notes: team.notes || "",
+      grade: team.grade || "",
     },
   });
 });
@@ -320,7 +345,6 @@ app.get("/api/teams/:teamId/presentations", requireAuth, async (req, res) => {
 app.get("/api/export", requireAuth, async (req, res) => {
   const format = req.query.format || 'json';
   
-  // Fetch all teams with presentations
   const teams = await prisma.team.findMany({
     where: { userId: req.userId },
     include: {
@@ -332,12 +356,12 @@ app.get("/api/export", requireAuth, async (req, res) => {
   });
   
   if (format === 'csv') {
-    // Generate CSV
     const rows = [];
     rows.push([
       'Team Name',
       'Topic',
       'Members',
+      'Grade',
       'Notes', 
       'Created At',
       'Presentation Time (min)',
@@ -349,13 +373,14 @@ app.get("/api/export", requireAuth, async (req, res) => {
     teams.forEach(team => {
       const members = JSON.parse(team.members || '[]').join('; ');
       const notes = team.notes || '';
+      const grade = team.grade || 'N/A';
       
       if (team.presentations.length === 0) {
-        // Team hasn't presented yet
         rows.push([
           team.name,
           team.topic,
           members,
+          grade,
           notes,
           team.createdAt.toISOString(),
           'N/A',
@@ -364,7 +389,6 @@ app.get("/api/export", requireAuth, async (req, res) => {
           'N/A'
         ]);
       } else {
-        // Include each presentation
         team.presentations.forEach(p => {
           const presMin = (p.presentationSeconds / 60).toFixed(2);
           const qaMin = (p.qaSeconds / 60).toFixed(2);
@@ -374,6 +398,7 @@ app.get("/api/export", requireAuth, async (req, res) => {
             team.name,
             team.topic,
             members,
+            grade,
             notes,
             team.createdAt.toISOString(),
             presMin,
@@ -385,7 +410,6 @@ app.get("/api/export", requireAuth, async (req, res) => {
       }
     });
     
-    // Convert to CSV string
     const csv = rows.map(row => 
       row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(',')
     ).join('\n');
@@ -395,13 +419,13 @@ app.get("/api/export", requireAuth, async (req, res) => {
     res.send(csv);
     
   } else {
-    // JSON format
     const data = teams.map(team => ({
       id: team.id,
       name: team.name,
       topic: team.topic,
       members: JSON.parse(team.members || '[]'),
-      notes: team.notes || "",  
+      notes: team.notes || "",
+      grade: team.grade || "",
       createdAt: team.createdAt,
       presentations: team.presentations.map(p => ({
         presentationMinutes: (p.presentationSeconds / 60).toFixed(2),
@@ -414,6 +438,37 @@ app.get("/api/export", requireAuth, async (req, res) => {
     res.json({ teams: data });
   }
 });
+
+// Save grade for a team
+app.post("/api/teams/:id/grade", requireAuth, async (req, res) => {
+  const { id } = req.params;
+  const { grade } = req.body;
+  
+  const team = await prisma.team.findFirst({
+    where: { id, userId: req.userId },
+  });
+  
+  if (!team) {
+    return res.status(404).json({ message: "Team not found." });
+  }
+  
+  const updatedTeam = await prisma.team.update({
+    where: { id },
+    data: { grade: grade || "" },
+  });
+  
+  res.json({
+    team: {
+      id: updatedTeam.id,
+      name: updatedTeam.name,
+      topic: updatedTeam.topic,
+      members: JSON.parse(updatedTeam.members || "[]"),
+      notes: updatedTeam.notes || "",
+      grade: updatedTeam.grade || "",
+    },
+  });
+});
+// app.get("/health", (req, res) => res.status(200).send("ok"));
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`Backend listening on http://0.0.0.0:${port}`);
