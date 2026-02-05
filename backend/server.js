@@ -468,7 +468,7 @@ app.post("/api/teams/:id/grade", requireAuth, async (req, res) => {
     },
   });
 });
-app.get("/health", (req, res) => res.status(200).send("ok"));
+// app.get("/health", (req, res) => res.status(200).send("ok"));
 
 app.listen(port, "0.0.0.0", () => {
   console.log(`Backend listening on http://0.0.0.0:${port}`);
