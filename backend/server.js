@@ -364,7 +364,6 @@ app.get("/api/export", requireAuth, async (req, res) => {
           'N/A'
         ]);
       } else {
-        // Include each presentation
         team.presentations.forEach(p => {
           const presMin = (p.presentationSeconds / 60).toFixed(2);
           const qaMin = (p.qaSeconds / 60).toFixed(2);
