@@ -31,7 +31,8 @@ jobs:
           preview_environment_name: 'pr-${{ github.event.pull_request.number }}'
           environment_variables: |
             {
-              "DATABASE_URL": "postgres://username:password@hostname/db"
+              "DATABASE_URL": "${{ secrets.PREVIEW_DATABASE_URL }}",
+              "JWT_SECRET": "${{ secrets.PREVIEW_JWT_SECRET }}"
             }
           branch_name: ${{ github.head_ref }}
 
