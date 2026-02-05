@@ -351,7 +351,6 @@ app.get("/api/export", requireAuth, async (req, res) => {
       const notes = team.notes || '';
       
       if (team.presentations.length === 0) {
-        // Team hasn't presented yet
         rows.push([
           team.name,
           team.topic,
