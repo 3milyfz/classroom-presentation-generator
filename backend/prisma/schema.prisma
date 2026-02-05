@@ -24,7 +24,7 @@ model Team {
   topic         String              @default("TBD")
   members       String              // JSON array of strings
   notes         String              @default("")
-  grade         String              @default("")  // New field for grade (stored as string for flexibility: A+, 95%, etc.)
+  grade         String              @default("") 
   createdAt     DateTime            @default(now())
   presentations TeamPresentation[]
 }
@@ -43,7 +43,6 @@ model TeamPresentation {
   team                  Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   presentationSeconds   Int
   qaSeconds             Int
-  presentedAt           DateTime @default(now())
   
   @@index([teamId])
 }
