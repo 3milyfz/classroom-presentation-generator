@@ -15,7 +15,26 @@ if (!JWT_SECRET) {
   process.exit(1);
 }
 
-app.use(cors());
+const allowedOrigins = [
+  "http://localhost:3000",
+  "http://localhost:5173",
+  "https://trynextup.vercel.app"
+];
+
+app.use(cors({
+  origin: (origin, callback) => {
+    if (!origin) return callback(null, true);
+    
+    if (allowedOrigins.includes(origin)) {
+      callback(null, true);
+    } else {
+      console.warn(`Blocked by CORS: ${origin}`);
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
+  credentials: true
+}));
+
 app.use(express.json());
 
 function requireAuth(req, res, next) {
