@@ -43,6 +43,7 @@ model TeamPresentation {
   team                  Team     @relation(fields: [teamId], references: [id], onDelete: Cascade)
   presentationSeconds   Int
   qaSeconds             Int
+  presentedAt           DateTime @default(now())
   
   @@index([teamId])
 }
