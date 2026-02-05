@@ -1,0 +1,52 @@
+name: Railway Preview (Backend)
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
+
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
+
+concurrency:
+  group: railway-preview-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  preview:
+    if: ${{ github.event.action != 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Deploy preview to Railway
+        id: preview
+        uses: ayungavis/railway-preview-deploy@v1.0.2
+        with:
+          railway_api_token: ${{ secrets.RAILWAY_API_TOKEN }}
+          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
+          environment_name: staging
+          preview_environment_name: pr-${{ github.event.pull_request.number }}
+          branch_name: ${{ github.head_ref }}
+          reuse_preview_environment: "true"
+          cleanup: "true"
+          environment_variables: |
+            {
+              "DATABASE_URL": "file:/tmp/preview.db",
+              "JWT_SECRET": "preview-only-secret"
+            }
+
+  cleanup:
+    if: ${{ github.event.action == 'closed' }}
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Cleanup preview environment
+        uses: ayungavis/railway-preview-deploy@v1.0.2
+        with:
+          railway_api_token: ${{ secrets.RAILWAY_API_TOKEN }}
+          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
+          environment_name: staging
+          preview_environment_name: pr-${{ github.event.pull_request.number }}
+          cleanup: "true"
