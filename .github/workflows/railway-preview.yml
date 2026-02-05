@@ -52,12 +52,11 @@ jobs:
             echo "Create failed (likely exists). Updating $ENV_NAME..."
             railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "$ENV_NAME"
 
-            # Ensure vars are set for this env/service
-            railway variables set "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}" --service "${{ env.SERVICE_ID }}"
-            railway variables set "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}" --service "${{ env.SERVICE_ID }}"
+            railway service "${{ env.SERVICE_ID }}" -- railway variables set "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}"
+            railway service "${{ env.SERVICE_ID }}" -- railway variables set "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}"
 
-            # Ensure it deploys the PR branch
             railway service config --service "${{ env.SERVICE_ID }}" --set "source.branch=$BRANCH"
+
           fi
 
       - name: Deploy to preview environment
