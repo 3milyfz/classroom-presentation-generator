@@ -1,4 +1,4 @@
-name: Railway Preview (Backend)
+name: Manage PR environments (Railway CLI)
 
 on:
   pull_request:
@@ -10,43 +10,45 @@ permissions:
   issues: write
 
 concurrency:
-  group: railway-preview-${{ github.event.pull_request.number }}
+  group: railway-pr-env-${{ github.event.pull_request.number }}
   cancel-in-progress: true
 
+env:
+  RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
+  LINK_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
+  DUPLICATE_FROM_ID: ${{ secrets.RAILWAY_DUPLICATE_FROM_ENV_ID }}
+  SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+
+  # Preview-only vars (ephemeral DB) 
+  ENV_NAME_1: DATABASE_URL
+  ENV_VALUE_1: ${{ secrets.PREVIEW_DATABASE_URL }}
+  ENV_NAME_2: JWT_SECRET
+  ENV_VALUE_2: ${{ secrets.PREVIEW_JWT_SECRET }}
+
 jobs:
-  preview:
-    if: ${{ github.event.action != 'closed' }}
+  pr_opened_or_updated:
+    if: github.event.action != 'closed'
     runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
     steps:
-      - uses: actions/checkout@v4
+      - name: Link to Railway project + base env
+        run: railway link --project ${{ env.LINK_PROJECT_ID }} --environment ${{ env.DUPLICATE_FROM_ID }}
 
-      - name: Deploy preview to Railway
-        id: preview
-        uses: ayungavis/railway-preview-deploy@v1.0.2
-        with:
-          railway_api_token: ${{ secrets.RAILWAY_API_TOKEN }}
-          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
-          environment_name: staging
-          preview_environment_name: pr-${{ github.event.pull_request.number }}
-          branch_name: ${{ github.head_ref }}
-          reuse_preview_environment: "true"
-          cleanup: "true"
-          environment_variables: |
-            {
-              "DATABASE_URL": "file:/tmp/preview.db",
-              "JWT_SECRET": "preview-only-secret"
-            }
+      - name: Create / update PR environment
+        run: |
+          railway environment new pr-${{ github.event.pull_request.number }} \
+            --copy ${{ env.DUPLICATE_FROM_ID }} \
+            --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_1 }}=${{ env.ENV_VALUE_1 }}" \
+            --service-variable ${{ env.SERVICE_ID }} "${{ env.ENV_NAME_2 }}=${{ env.ENV_VALUE_2 }}" \
+            --service-config ${{ env.SERVICE_ID }} "source.branch" "${{ github.head_ref }}"
 
-  cleanup:
-    if: ${{ github.event.action == 'closed' }}
+  pr_closed:
+    if: github.event.action == 'closed'
     runs-on: ubuntu-latest
+    container: ghcr.io/railwayapp/cli:latest
     steps:
-      - uses: actions/checkout@v4
-      - name: Cleanup preview environment
-        uses: ayungavis/railway-preview-deploy@v1.0.2
-        with:
-          railway_api_token: ${{ secrets.RAILWAY_API_TOKEN }}
-          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
-          environment_name: staging
-          preview_environment_name: pr-${{ github.event.pull_request.number }}
-          cleanup: "true"
+      - name: Link to Railway project + base env
+        run: railway link --project ${{ env.LINK_PROJECT_ID }} --environment ${{ env.DUPLICATE_FROM_ID }}
+
+      - name: Delete PR environment
+        run: railway environment delete pr-${{ github.event.pull_request.number }} || true
