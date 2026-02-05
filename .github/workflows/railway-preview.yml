@@ -1,81 +1,115 @@
-# name: Railway
+name: Railway Preview Deployment
 
-# on:
-#   pull_request:
-#     types: [opened, synchronize, reopened, closed]
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, closed]
 
-# permissions:
-#   contents: read
-#   pull-requests: write
-#   issues: write
+permissions:
+  contents: read
+  pull-requests: write
+  issues: write
 
-# concurrency:
-#   group: railway-pr-env-${{ github.event.pull_request.number }}
-#   cancel-in-progress: true
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
 
-# env:
-#   RAILWAY_API_TOKEN: ${{ secrets.RAILWAY_API_TOKEN }}
-#   LINK_PROJECT_ID: ${{ secrets.RAILWAY_PROJECT_ID }}
-#   DUPLICATE_FROM_ID: ${{ secrets.RAILWAY_DUPLICATE_FROM_ENV_ID }}
-#   SERVICE_ID: ${{ secrets.RAILWAY_SERVICE_ID }}
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    if: ${{ github.event.action != 'closed' }}
 
-#   # Preview-only vars (ephemeral DB)
-#   PREVIEW_DATABASE_URL: ${{ secrets.PREVIEW_DATABASE_URL }}
-#   PREVIEW_JWT_SECRET: ${{ secrets.PREVIEW_JWT_SECRET }}
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
 
-# jobs:
-#   pr_opened_or_updated:
-#     if: github.event.action != 'closed'
-#     runs-on: ubuntu-latest
-#     container: ghcr.io/railwayapp/cli:latest
+      - name: Deploy to Railway
+        uses: ayungavis/railway-preview-deploy@v1.0.2
+        with:
+          railway_api_token: ${{ secrets.RAILWAY_API_TOKEN }}
+          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
+          environment_name: 'staging'
+          preview_environment_name: 'pr-${{ github.event.pull_request.number }}'
+          environment_variables: |
+            {
+              "DATABASE_URL": "postgres://username:password@hostname/db"
+            }
+          branch_name: ${{ github.head_ref }}
 
-#     steps:
-#       - name: Link to Railway project + base env
-#         run: railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "${{ env.DUPLICATE_FROM_ID }}"
+      - name: Post deployment info
+        run:
+          echo "Preview deployed at ${{ steps.deploy.outputs.service_domain }}"
 
-#       - name: Create or update PR environment (robust)
-#         run: |
-#           set -e
-#           ENV_NAME="pr-${{ github.event.pull_request.number }}"
-#           BRANCH="${{ github.head_ref }}"
+      - name: Post or update deployment comment
+        if: ${{ steps.test-action.outputs.service_domain != '' }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            const marker = '<!-- preview-comment -->'; // Unique marker to identify the comment
+            const { data: commits } = await github.rest.pulls.listCommits({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              pull_number: context.issue.number,
+              per_page: 100 
+            });
+            const latestCommit = commits[commits.length - 1];
+            const latestCommitSha = latestCommit.sha.substring(0, 7);
+            const latestCommitAuthor = latestCommit.commit.author.name;
 
-#           echo "Target preview environment: $ENV_NAME (branch: $BRANCH)"
 
-#           echo "Attempting to create environment (copy from base)..."
-#           if railway environment new "$ENV_NAME" \
-#               --copy "${{ env.DUPLICATE_FROM_ID }}" \
-#               --service-variable "${{ env.SERVICE_ID }}" "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}" \
-#               --service-variable "${{ env.SERVICE_ID }}" "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}" \
-#               --service-config "${{ env.SERVICE_ID }}" "source.branch" "$BRANCH"; then
-#             echo "Created $ENV_NAME"
-#           else
-#             echo "Create failed (likely exists). Updating $ENV_NAME..."
-#             railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "$ENV_NAME"
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
 
-#             --service-variable "${{ env.SERVICE_ID }}" "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}" \
-#             --service-variable "${{ env.SERVICE_ID }}" "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}" \
-#             --service-config "${{ env.SERVICE_ID }}" "source.branch" "$BRANCH"
-#           fi
+            const body = `
+              ${marker}  <!-- This marker helps identify the comment for future updates -->
+              🚀 **Deployment success!**
 
-#       - name: Deploy to preview environment
-#         run: |
-#           set -e
-#           ENV_NAME="pr-${{ github.event.pull_request.number }}"
-#           railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "$ENV_NAME"
-#           railway up --service "${{ env.SERVICE_ID }}" --detach
+              - \`web\` deployed at [${{ steps.test-action.outputs.service_domain }}](https://${{ steps.test-action.outputs.service_domain }})
 
-#   pr_closed:
-#     if: github.event.action == 'closed'
-#     runs-on: ubuntu-latest
-#     container: ghcr.io/railwayapp/cli:latest
+              ---
 
-#     steps:
-#       - name: Link to Railway project + base env
-#         run: railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "${{ env.DUPLICATE_FROM_ID }}"
+              *commit: ${latestCommitSha}*  
+              *author: ${latestCommitAuthor}* 
+            `;
 
-#       - name: Delete PR environment
-#         run: |
-#           set -e
-#           ENV_NAME="pr-${{ github.event.pull_request.number }}"
-#           echo "Deleting $ENV_NAME (if it exists)..."
-#           railway environment delete "$ENV_NAME" --yes || true
+            const existingComment = comments.find(comment => comment.body.includes(marker));
+
+            if (existingComment) {
+              await github.rest.issues.updateComment({
+                comment_id: existingComment.id,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+              core.info(`Updated comment ID: ${existingComment.id}`);
+            } else {
+              await github.rest.issues.createComment({
+                issue_number: context.issue.number,
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                body: body
+              });
+              core.info('Created a new comment');
+            }
+
+  cleanup:
+    runs-on: ubuntu-latest
+    if:
+      ${{ github.event.pull_request.merged == true || github.event.action ==
+      'closed' }}
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Cleanup Railway Environment
+        uses: ayungavis/railway-preview-deploy@v1.0.2
+        with:
+          railway_api_token: ${{ secrets.RAILWAY_API_TOKEN }}
+          project_id: ${{ secrets.RAILWAY_PROJECT_ID }}
+          environment_name: production
+          preview_environment_name: 'pr-${{ github.event.pull_request.number }}'
+          branch_name: ${{ github.head_ref }}
+          cleanup: 'true'
