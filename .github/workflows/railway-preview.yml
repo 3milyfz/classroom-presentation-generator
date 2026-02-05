@@ -50,7 +50,7 @@ jobs:
             echo "Created $ENV_NAME"
           else
             echo "Create failed (likely exists). Updating $ENV_NAME..."
-            railway link --environment "$ENV_NAME"
+            railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "$ENV_NAME"
 
             # Ensure vars are set for this env/service
             railway variables set "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}" --service "${{ env.SERVICE_ID }}"
@@ -64,7 +64,7 @@ jobs:
         run: |
           set -e
           ENV_NAME="pr-${{ github.event.pull_request.number }}"
-          railway link --environment "$ENV_NAME"
+          railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "$ENV_NAME"
           railway up --service "${{ env.SERVICE_ID }}" --detach
 
   pr_closed:
