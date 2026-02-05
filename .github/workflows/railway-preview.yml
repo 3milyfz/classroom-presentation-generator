@@ -1,4 +1,4 @@
-name: Railway Preview Deployment
+name: Railway
 
 on:
   pull_request:
