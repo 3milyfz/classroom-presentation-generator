@@ -1,4 +1,4 @@
-name: Manage PR environments (Railway CLI)
+name: Railway
 
 on:
   pull_request:
