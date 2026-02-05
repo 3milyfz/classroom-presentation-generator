@@ -52,8 +52,8 @@ jobs:
             echo "Create failed (likely exists). Updating $ENV_NAME..."
             railway link --project "${{ env.LINK_PROJECT_ID }}" --environment "$ENV_NAME"
 
-            railway service "${{ env.SERVICE_ID }}" -- railway variables set "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}"
-            railway service "${{ env.SERVICE_ID }}" -- railway variables set "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}"
+            railway service "${{ env.SERVICE_ID }}" variables set "DATABASE_URL=${{ env.PREVIEW_DATABASE_URL }}"
+            railway service "${{ env.SERVICE_ID }}" variables set "JWT_SECRET=${{ env.PREVIEW_JWT_SECRET }}"
 
             railway service config --service "${{ env.SERVICE_ID }}" --set "source.branch=$BRANCH"
 
