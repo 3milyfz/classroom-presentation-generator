@@ -75,7 +75,7 @@ export default function App() {
         headers: { "Content-Type": "application/json", ...getAuthHeaders() },
         body: JSON.stringify({
           presentationSeconds: Math.max(0, seconds),
-          qaSeconds: 0, // Q&A not completed yet
+          qaSeconds: 0,
         }),
       });
 
