@@ -1,16 +1,22 @@
-import React from "react";
-import { createRoot } from "react-dom/client";
-import { ThemeProvider } from "./theme.jsx";
-import { AuthProvider } from "./auth.jsx";
-import App from "./App.jsx";
-import "./index.css";
+import { StrictMode } from 'react';
+import { createRoot } from 'react-dom/client';
+import { BrowserRouter } from 'react-router-dom';
+import './index.css';
+import App from './App.jsx';
+import { AuthProvider } from './auth.jsx';
+import { ThemeProvider } from './theme.jsx';
+import { TeamProvider } from './TeamContext.jsx';
 
-createRoot(document.getElementById("root")).render(
-  <React.StrictMode>
-    <ThemeProvider>
+createRoot(document.getElementById('root')).render(
+  <StrictMode>
+    <BrowserRouter>
       <AuthProvider>
-        <App />
+        <ThemeProvider>
+          <TeamProvider>
+            <App />
+          </TeamProvider>
+        </ThemeProvider>
       </AuthProvider>
-    </ThemeProvider>
-  </React.StrictMode>
+    </BrowserRouter>
+  </StrictMode>,
 );
